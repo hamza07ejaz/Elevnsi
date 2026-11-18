@@ -1,75 +1,101 @@
-# ELEVNSI Website (v1)
+# ELEVNSI Website (v3: Vercel)
 
-A fast, static website for ELEVNSI: plain HTML, CSS and JavaScript with no build step and no framework. It can be hosted anywhere (Netlify, Vercel, Cloudflare Pages, GitHub Pages, or any web host).
+A fast website for ELEVNSI plus a small backend on Vercel:
 
-## What's included
+- **Leads & bookings saved** in Upstash Redis (free plan, added from the Vercel dashboard).
+- **Automatic emails:** the customer gets a confirmation (bookings include a calendar invite); you get a notification for every lead.
+- **Real booking calendar:** booked times are blocked; even two people clicking at the same moment can't double-book.
+- **Password-protected admin panel** at `yoursite/#admin`: leads, statuses, export, and editing the contact details shown on the site (WhatsApp, phone, email, address, hours, social links).
 
-| File | Purpose |
-|---|---|
-| `index.html` | Home page: hero, 3 services, why ELEVNSI, solutions detail, how it works, about, contact, footer |
-| `privacy.html`, `terms.html` | Legal pages (**starting templates**, so have them reviewed before launch) |
-| `assets/css/styles.css` | All styling (brand colours are at the top as CSS variables) |
-| `assets/js/config.js` | **The only file you need to edit** to connect your services |
-| `assets/js/main.js` | Menu, animations, system diagram, form handling, booking window, analytics events |
-| `assets/js/store.js` | Data layer for leads and contact details |
-| `assets/js/admin.js` | Admin panel (open `yoursite/#admin`) |
-| `assets/img/` | Logo, favicon, social-share image |
-| `robots.txt`, `sitemap.xml` | Basic SEO |
+## Folder structure
 
-## Before going live: 4 things to connect
-
-Open `assets/js/config.js` and fill in:
-
-### 1. Leads → Netlify Forms (already switched on: `netlifyForms: true`)
-Both forms (`contact` and `consultation-booking`) are set up for Netlify Forms.
-1. Upload the site to Netlify (drag the folder onto your site's **Deploys** page).
-2. In Netlify, open your site → **Forms**. If it asks, click **Enable form detection**, then upload the site once more.
-3. Send a test inquiry from the live site and check it appears under **Forms**.
-4. Email alerts: **Site configuration → Notifications → Emails and webhooks → Form submission notifications → Add notification → Email notification**, choose the form, enter your inbox.
-
-A hidden spam trap is included (`netlify-honeypot`). Netlify's free plan includes 100 form submissions per month.
-Prefer Formspree instead? Set `netlifyForms: false` and put your Formspree link in `contactFormEndpoint`.
-
-**Changing contact details on Netlify:** edit the contact section at the top of `assets/js/config.js` (WhatsApp, phone, email, address, hours, social links) and upload again. Opening `yoursite/#admin` on Netlify shows these same instructions.
-
-### 2. Consultation booking → team calendar + confirmation emails (`bookingUrl`)
-Use **Calendly** (or Cal.com):
-1. Create a "Free Consultation" event (30 min, video call).
-2. Connect your team's Google or Outlook calendar so only free times are shown.
-3. Turn on email confirmations and reminders for invitees, and notifications for your team.
-4. Paste the event link (e.g. `https://calendly.com/elevnsi/consultation`) into `bookingUrl`.
-
-Every "Book a Consultation" button then opens your live calendar inside the site. Until a link is set, the site shows a built-in date/time request form that sends requests to your form endpoint. That form does **not** check real availability, so connect Calendly before launch.
-
-### 3. Google Analytics (`gaMeasurementId`)
-Create a GA4 property, copy the Measurement ID (`G-XXXXXXXXXX`) into `gaMeasurementId`. The site also sends these events:
-- `booking_open`: someone opened the booking window
-- `generate_lead`: a contact form or booking request was submitted
-
-Mark `generate_lead` as a key event (conversion) in GA4.
-Depending on where your visitors are (e.g. EU/UK), you may need a cookie consent banner before analytics loads.
-
-### 4. Domain and contact details
-- Replace `https://www.elevnsi.com/` in `index.html`, `privacy.html`, `terms.html`, `robots.txt` and `sitemap.xml` if your domain is different.
-- Check `email` and `linkedinUrl` in `config.js`. They're placeholders.
-
-## Admin panel (`#admin`)
-Shows every contact-form and booking lead (search, filter, status, delete, CSV export) and lets you edit the WhatsApp number, phone, email, address, hours and social links shown on the site.
-
-- **When hosted as the Claude artifact:** leads and settings are saved in the artifact's shared database. Only the owner and editors can see leads.
-- **On any other host:** `store.js` falls back to the visitor's own browser storage, so the admin panel only shows leads from that same browser. To collect leads from all visitors on your own host, set `contactFormEndpoint` (Formspree emails you every lead), or replace the functions in `store.js` with calls to a real database (e.g. Supabase or Firebase) **and protect the admin page with a login**.
-
-## Previewing locally
-Open `index.html` directly in a browser, or run a small local server from this folder:
-
-```bash
-npx http-server -p 5173
+```
+public/                ← the website (HTML, CSS, JS, images)
+  assets/js/config.js  ← default contact details & options
+api/                   ← backend routes (Vercel Functions)
+  lead.js              POST /api/lead
+  slots.js             GET  /api/slots
+  settings.js          GET/PUT /api/settings
+  admin/login.js       POST /api/admin/login
+  admin/leads.js       GET/PATCH/DELETE /api/admin/leads
+lib/
+  config.mjs           ← booking hours, time zone, meeting length
+  mail.mjs             ← email templates
+  db.mjs               ← Upstash Redis storage
+  core.mjs             ← shared helpers (auth, validation)
+vercel.json            ← tells Vercel to publish public/
+package.json
 ```
 
-## Editing tips
-- **Text:** edit `index.html` directly. Each section is labelled with a comment.
-- **Colours:** change the variables at the top of `assets/css/styles.css` (`--green`, `--ink`, etc.).
-- **Booking time slots** for the built-in fallback: `booking.times` and `booking.workDays` in `config.js`.
+## Setup (one time, about 15 minutes)
 
-## Not included (by design, per requirements)
-No customer accounts, dashboards, login, payments or public pricing.
+### 1. Put the project on Vercel
+**Option A: GitHub (recommended, auto-deploys on every change)**
+1. Create a GitHub repository and upload this folder (everything except `node_modules`).
+2. Vercel → **Add New… → Project** → import the repository.
+3. Framework preset: **Other**. Leave build settings empty (`vercel.json` handles it) → **Deploy**.
+
+**Option B: Vercel CLI (from this folder)**
+```bash
+npm install
+npx vercel login
+npx vercel
+```
+Answer the questions (new project, name e.g. `elevnsi`). This creates a preview deployment.
+
+### 2. Add the database (Upstash Redis)
+Vercel → your project → **Storage** → **Create Database** → **Upstash for Redis** (free plan) → create → **Connect to project**.
+This adds `KV_REST_API_URL` and `KV_REST_API_TOKEN` to your project automatically.
+
+### 3. Create a Gmail App Password (for sending emails)
+1. Turn on 2-Step Verification: https://myaccount.google.com/security
+2. Create an App Password: https://myaccount.google.com/apppasswords → name it "ELEVNSI website" → copy the 16-letter password.
+
+(Prefer Resend? Set `RESEND_API_KEY` and `MAIL_FROM` instead of the SMTP variables. Resend needs your own domain verified to email customers.)
+
+### 4. Add environment variables
+Vercel → your project → **Settings → Environment Variables** (apply to Production and Preview):
+
+| Key | Value |
+|---|---|
+| `ADMIN_PASSWORD` | the password you want for the admin panel (long and unique) |
+| `ADMIN_EMAIL` | where new-lead notifications go, e.g. `you@gmail.com` |
+| `SMTP_USER` | your Gmail address |
+| `SMTP_PASS` | the 16-letter App Password from step 3 |
+| `MAIL_FROM` | optional, e.g. `ELEVNSI <you@gmail.com>` |
+| `SESSION_SECRET` | optional: any long random text (keeps admin sign-ins valid when you change the password) |
+| `SITE_URL` | optional: your final address, e.g. `https://elevnsi.com` (used for links in emails) |
+
+### 5. Redeploy
+Environment variables apply to new deployments only:
+Vercel → **Deployments** → latest → **⋯ → Redeploy** (or run `npx vercel --prod`).
+
+### 6. Test it
+1. Open your site and book a consultation with your own email → you should get the confirmation (check spam the first time), and `ADMIN_EMAIL` gets the notification.
+2. Open `yoursite/#admin`, sign in with `ADMIN_PASSWORD` → the booking is listed.
+3. In **Contact details**, add your WhatsApp number → the green WhatsApp button appears on the site.
+
+### Custom domain
+Vercel → your project → **Settings → Domains** → add `elevnsi.com` and follow the DNS steps. Then set `SITE_URL` and update the domain in `public/sitemap.xml`, `public/robots.txt` and the `<head>` of `public/index.html`.
+
+## Everyday use
+- **Admin panel:** `https://yoursite/#admin` (not linked publicly). Sign-in lasts 12 hours.
+- **Booking hours / time zone / meeting length:** `lib/config.mjs`, then deploy again.
+- **Email wording:** `lib/mail.mjs`.
+- **Change the admin password:** update `ADMIN_PASSWORD` in Vercel and redeploy.
+- Deleting a booking in the admin panel frees that time slot again.
+
+## Local development
+```bash
+npm install
+npx vercel link
+npx vercel env pull .env.local
+npx vercel dev
+```
+Opens http://localhost:3000 with the backend running. Without Redis variables it uses temporary in-memory storage; without email variables, emails are skipped and logged in the terminal.
+Opening `public/index.html` directly runs a **preview mode** where leads are saved in that browser only.
+
+## Notes
+- Upstash's free plan and Vercel's Hobby plan are enough for a site this size. Vercel's Hobby plan is for non-commercial use; for a business site, Vercel recommends the Pro plan.
+- The privacy and terms pages are templates. Have them reviewed before launch.
+- No public pricing, customer accounts or payments, as per the requirements.

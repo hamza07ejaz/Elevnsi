@@ -1,0 +1,17 @@
+{
+  "name": "elevnsi-website",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ELEVNSI website with leads, bookings, emails and admin panel on Vercel",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "npx vercel dev",
+    "deploy": "npx vercel --prod"
+  },
+  "dependencies": {
+    "nodemailer": "6.9.16"
+  }
+}
