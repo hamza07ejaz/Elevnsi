@@ -11,7 +11,7 @@ import {
 const guard = (fn) => route(async (req) => (isAdmin(req) ? fn(req) : fail(401, 'unauthorized', 'Please sign in again.')));
 const expiry = (days) => (days > 0 ? new Date(Date.now() + days * 864e5).toISOString() : null);
 const validDays = (d) => Number.isInteger(d) && d >= 0 && d <= 90;
-const view = (req, inv) => ({ ...inv, state: inviteState(inv), link: `${siteUrl(req)}/demo/?k=${inv.code}` });
+const view = (req, inv) => ({ ...inv, state: inviteState(inv), link: `${siteUrl(req)}/demo?k=${inv.code}` });
 
 export const GET = guard(async (req) => {
   const store = demoStore();

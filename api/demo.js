@@ -76,7 +76,7 @@ export const GET = route(async (req) => {
     if (state !== 'active') return locked(state);
     await recordOpen(req, key, inv, true);
     // Redirect to the clean address (the browser keeps any #page part, e.g. #booking)
-    return new Response(null, { status: 303, headers: { ...PRIVATE_HEADERS, location: '/demo/', 'set-cookie': sessionCookie(req, key, inv) } });
+    return new Response(null, { status: 303, headers: { ...PRIVATE_HEADERS, location: '/demo', 'set-cookie': sessionCookie(req, key, inv) } });
   }
 
   if (!FILES[file]) return new Response('Not found', { status: 404, headers: PRIVATE_HEADERS });
