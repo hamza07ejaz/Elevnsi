@@ -3,6 +3,13 @@
   "framework": null,
   "outputDirectory": "public",
   "cleanUrls": false,
+  "functions": {
+    "api/demo.js": { "includeFiles": "private/demo/**" }
+  },
+  "rewrites": [
+    { "source": "/demo", "destination": "/api/demo" },
+    { "source": "/demo/:path*", "destination": "/api/demo?path=:path*" }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",

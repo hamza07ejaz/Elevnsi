@@ -6,6 +6,7 @@ A fast website for ELEVNSI plus a small backend on Vercel:
 - **Automatic emails:** the customer gets a confirmation (bookings include a calendar invite); you get a notification for every lead.
 - **Real booking calendar:** booked times are blocked; even two people clicking at the same moment can't double-book.
 - **Password-protected admin panel** at `yoursite/#admin`: leads, statuses, export, and editing the contact details shown on the site (WhatsApp, phone, email, address, hours, social links).
+- **Private console demo** at `yoursite/demo/`, for invited people only. In the admin panel → **Demo access**, create a personal link for each person (it can expire after 1–30 days), copy it or send it by WhatsApp/email, see when they opened it, and switch it off at any time. You get an email the first time each person opens their link. Anyone without a valid link sees a "This demo is private" page.
 
 ## Folder structure
 
@@ -18,6 +19,9 @@ api/                   ← backend routes (Vercel Functions)
   settings.js          GET/PUT /api/settings
   admin/login.js       POST /api/admin/login
   admin/leads.js       GET/PATCH/DELETE /api/admin/leads
+  admin/demo.js        GET/POST/PATCH/DELETE /api/admin/demo (demo invite links)
+  demo.js              serves /demo/ to people with a valid invite
+private/demo/          ← the console demo (not public; served only through api/demo.js)
 lib/
   config.mjs           ← booking hours, time zone, meeting length
   mail.mjs             ← email templates
@@ -84,6 +88,8 @@ Vercel → your project → **Settings → Domains** → add `elevnsi.com` and f
 - **Email wording:** `lib/mail.mjs`.
 - **Change the admin password:** update `ADMIN_PASSWORD` in Vercel and redeploy.
 - Deleting a booking in the admin panel frees that time slot again.
+- **Showing the demo to someone:** admin panel → **Demo access** → enter their name → **Create link** → send it. Switching a link off blocks it immediately, even for someone who already has the demo open (on their next page load).
+- Set `SESSION_SECRET` so demo visitors stay signed in when you change the admin password.
 
 ## Local development
 ```bash

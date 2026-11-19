@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ELEVNSI Console</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Clickable prototype of the ELEVNSI client console: AI appointment booking, lead follow-up and qualification, and an AI call agent.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/demo/styles.css">
+</head>
+<body>
+
+<!-- ICONS -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="g-dark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d4440"/><stop offset="1" stop-color="#0d0f0e"/></linearGradient>
+    <linearGradient id="g-green" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e0ff8a"/><stop offset=".55" stop-color="#b5ff24"/><stop offset="1" stop-color="#7cc400"/></linearGradient>
+  </defs>
+  <symbol id="mark" viewBox="0 0 100 100">
+    <path d="M18 30 L48 11 L48 24 L36 31.5 L36 82 L18 90 Z" fill="url(#g-dark)" stroke="rgba(255,255,255,.18)" stroke-width=".8"/>
+    <path d="M36 31.5 L48 24 L48 28 L43.5 31 L43.5 80 L36 82 Z" fill="url(#g-green)"/>
+    <path d="M52 32 L73 18 L84 24 L63 38 Z" fill="#4a514c"/>
+    <path d="M63 38 L84 24 L84 90 L63 82 Z" fill="url(#g-dark)" stroke="rgba(255,255,255,.18)" stroke-width=".8"/>
+    <path d="M52 32 L63 38 L63 82 L54 79 L54 37 Z" fill="url(#g-green)"/>
+  </symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></symbol>
+  <symbol id="i-headset" viewBox="0 0 24 24"><path d="M3 14v-2a9 9 0 0 1 18 0v2"/><path d="M21 14v3a2 2 0 0 1-2 2h-1v-6h3zM3 14v3a2 2 0 0 0 2 2h1v-6H3z"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></symbol>
+  <symbol id="i-transfer" viewBox="0 0 24 24"><path d="m16 3 4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16M16 16h5v5"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.5"/><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="8" r="2.5"/><path d="M6 7.5v9M18 10.5c0 4-4 4.5-9.5 7"/></symbol>
+  <symbol id="i-brain" viewBox="0 0 24 24"><path d="M9.5 3A3.5 3.5 0 0 0 6 6.5v.2A3.5 3.5 0 0 0 4 13a3.5 3.5 0 0 0 2 5.3A3 3 0 0 0 12 19V5a2.5 2.5 0 0 0-2.5-2z"/><path d="M14.5 3A3.5 3.5 0 0 1 18 6.5v.2a3.5 3.5 0 0 1 2 6.3 3.5 3.5 0 0 1-2 5.3A3 3 0 0 1 12 19"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0V8zM12 18v4"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+  <symbol id="i-insta" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></symbol>
+</svg>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="side" id="side" aria-label="Main navigation">
+    <a class="brand" href="#overview">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span><b>ELEVNSI</b><small>Console</small></span>
+    </a>
+
+    <nav class="nav">
+      <a href="#overview" data-nav="overview"><svg class="ic"><use href="#i-grid"/></svg>Overview</a>
+      <a href="#inbox" data-nav="inbox"><svg class="ic"><use href="#i-inbox"/></svg>Inbox<span class="count" id="nav-inbox-count">2</span></a>
+      <a href="#analytics" data-nav="analytics"><svg class="ic"><use href="#i-chart"/></svg>Analytics</a>
+      <div class="nav-label">AI systems</div>
+      <a href="#booking" data-nav="booking"><svg class="ic"><use href="#i-calendar"/></svg>Appointment Booking</a>
+      <a href="#leads" data-nav="leads"><svg class="ic"><use href="#i-users"/></svg>Lead Follow-Up<span class="count">3</span></a>
+      <a href="#calls" data-nav="calls"><svg class="ic"><use href="#i-headset"/></svg>Call Agent</a>
+      <div class="nav-label">Build</div>
+      <a href="#workflows" data-nav="workflows"><svg class="ic"><use href="#i-branch"/></svg>Workflows</a>
+      <a href="#training" data-nav="training"><svg class="ic"><use href="#i-brain"/></svg>AI Training</a>
+      <a href="#integrations" data-nav="integrations"><svg class="ic"><use href="#i-plug"/></svg>Integrations</a>
+      <div class="nav-label">Agency</div>
+      <a href="#clients" data-nav="clients"><svg class="ic"><use href="#i-building"/></svg>Clients</a>
+      <div class="nav-label">Account</div>
+      <a href="#setup" data-nav="setup"><svg class="ic"><use href="#i-sliders"/></svg>Setup</a>
+    </nav>
+
+    <div class="side-status">
+      <h4>System status</h4>
+      <ul>
+        <li><span class="dot pulse"></span>Booking AI<span>Active</span></li>
+        <li><span class="dot pulse"></span>Follow-up AI<span>Active</span></li>
+        <li><span class="dot pulse"></span>Call agent<span>24/7</span></li>
+      </ul>
+    </div>
+    <a class="back-site" href="/"><svg class="ic sm"><use href="#i-arrow"/></svg>Back to website</a>
+    <p class="proto-note">Prototype with sample data. Nothing here is saved or sent.</p>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <div class="main">
+    <!-- TOP BAR -->
+    <header class="top">
+      <button class="icon-btn menu-btn" id="menu-btn" aria-label="Open menu" aria-controls="side" aria-expanded="false"><svg class="ic"><use href="#i-menu"/></svg></button>
+      <h1 id="page-title">Overview</h1>
+      <span class="client-chip" id="client-chip"><span class="dot"></span>Client: <b id="client-name">ABC Dental</b></span>
+      <div class="top-tools">
+        <span class="ai-now" title="Conversations the AI is handling right now"><span class="dot pulse"></span><b class="num" id="ai-now">7</b> live</span>
+        <button class="search-btn" type="button" id="cmd-open" aria-label="Search or jump to (Ctrl K)"><svg class="ic sm"><use href="#i-search"/></svg><span>Search or jump to…</span><kbd>Ctrl K</kbd></button>
+        <button class="icon-btn" type="button" id="theme-btn" aria-label="Switch light or dark mode"><svg class="ic"><use href="#i-moon"/></svg></button>
+        <button class="icon-btn" popovertarget="notif" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg><span class="badge"></span></button>
+        <span class="avatar me" title="Signed in as the clinic manager">AK</span>
+      </div>
+    </header>
+
+    <div popover id="notif" class="notif">
+      <h4>Notifications</h4>
+      <ul>
+        <li><span class="feed-ic g"><svg class="ic sm"><use href="#i-flame"/></svg></span><div>Hot lead: <b>John Miller</b> is ready for sales<small>4 min ago · Lead Follow-Up</small></div></li>
+        <li><span class="feed-ic"><svg class="ic sm"><use href="#i-calendar"/></svg></span><div><b>Sarah Ahmed</b> booked a teeth cleaning<small>12 min ago · Booking AI</small></div></li>
+        <li><span class="feed-ic"><svg class="ic sm"><use href="#i-transfer"/></svg></span><div>Call transferred to front desk<small>26 min ago · Call agent</small></div></li>
+      </ul>
+    </div>
+
+    <main class="content">
+
+      <!-- ============ OVERVIEW ============ -->
+      <section class="view" id="view-overview" data-title="Overview" data-client="ABC Dental">
+        <div class="hello">
+          <div>
+            <h2>Good morning, ABC Dental</h2>
+            <p><span class="dot pulse"></span>All 3 AI systems are running. Here's what they did for you.</p>
+          </div>
+          <div class="seg" role="group" aria-label="Date range">
+            <button type="button" data-range="today" aria-pressed="false">Today</button>
+            <button type="button" data-range="week" aria-pressed="true">7 days</button>
+            <button type="button" data-range="month" aria-pressed="false">30 days</button>
+          </div>
+        </div>
+
+        <div class="kpis" id="kpis"></div>
+
+        <div class="ov-grid">
+          <article class="card">
+            <div class="card-head">
+              <div><h3>Leads and bookings this week</h3><span class="sub">Mon 16 – Sun 22 Nov</span></div>
+              <div class="chart-legend"><span><i style="background:var(--line-2)"></i>New leads</span><span><i class="sw-b"></i>Booked</span></div>
+            </div>
+            <div class="card-body"><svg id="week-chart" viewBox="0 0 640 250" role="img" aria-label="Bar chart of new leads and bookings per day"></svg></div>
+          </article>
+          <article class="card">
+            <div class="card-head"><h3>Live activity</h3><span class="pill onair"><span class="dot pulse"></span>Live</span></div>
+            <div class="card-body"><ul class="feed" id="feed"></ul></div>
+          </article>
+        </div>
+
+        <div class="systems">
+          <article class="card sys">
+            <div class="sys-top"><span class="sys-ic"><svg class="ic lg"><use href="#i-calendar"/></svg></span><div><h3>AI Appointment Booking</h3><p>Talks to leads and books them in</p></div></div>
+            <dl><div><dt>Booked</dt><dd class="num">31</dd></div><div><dt>Reminders</dt><dd class="num">54</dd></div><div><dt>No-shows</dt><dd class="num">2</dd></div></dl>
+            <div class="sys-actions"><a class="btn sm primary" href="#booking" data-autoplay="booking"><svg class="ic sm fill"><use href="#i-play"/></svg>Play demo</a><a class="btn sm" href="#booking">Open</a></div>
+          </article>
+          <article class="card sys">
+            <div class="sys-top"><span class="sys-ic"><svg class="ic lg"><use href="#i-users"/></svg></span><div><h3>Lead Follow-Up &amp; Qualification</h3><p>Qualifies leads and follows up</p></div></div>
+            <dl><div><dt>Qualified</dt><dd class="num">19</dd></div><div><dt>Follow-ups</dt><dd class="num">87</dd></div><div><dt>Replied</dt><dd class="num">64%</dd></div></dl>
+            <div class="sys-actions"><a class="btn sm primary" href="#leads" data-autoplay="leads"><svg class="ic sm fill"><use href="#i-play"/></svg>Play demo</a><a class="btn sm" href="#leads">Open</a></div>
+          </article>
+          <article class="card sys">
+            <div class="sys-top"><span class="sys-ic"><svg class="ic lg"><use href="#i-headset"/></svg></span><div><h3>AI Customer Support Calls</h3><p>Answers the phone 24/7</p></div></div>
+            <dl><div><dt>Answered</dt><dd class="num">126</dd></div><div><dt>Resolved</dt><dd class="num">88%</dd></div><div><dt>Transferred</dt><dd class="num">15</dd></div></dl>
+            <div class="sys-actions"><a class="btn sm primary" href="#calls" data-autoplay="calls"><svg class="ic sm fill"><use href="#i-play"/></svg>Play demo</a><a class="btn sm" href="#calls">Open</a></div>
+          </article>
+        </div>
+
+        <article class="card">
+          <div class="card-head"><div><h3>AI insights</h3><span class="sub">Patterns the AI spotted in your conversations this week</span></div><span class="pill brand"><svg class="ic sm"><use href="#i-bulb"/></svg>3 new</span></div>
+          <div class="card-body"><ul class="insights" id="insights"></ul></div>
+        </article>
+      </section>
+
+      <!-- ============ INBOX ============ -->
+      <section class="view" id="view-inbox" data-title="Inbox" data-client="ABC Dental" hidden>
+        <div class="page-head">
+          <div>
+            <h2>Unified Inbox</h2>
+            <p>Every conversation from WhatsApp, SMS, Instagram, web chat, email and phone in one place. The AI handles most of them and hands the rest to you.</p>
+          </div>
+          <div class="head-actions"><span class="pill ok"><svg class="ic sm"><use href="#i-spark"/></svg>AI solved 91% this week</span></div>
+        </div>
+        <div class="card inbox">
+          <aside class="ib-list">
+            <div class="ib-tools">
+              <div class="seg" role="group" aria-label="Filter conversations" id="ib-filter">
+                <button type="button" data-f="all" aria-pressed="true">All</button>
+                <button type="button" data-f="human" aria-pressed="false">Needs you</button>
+                <button type="button" data-f="ai" aria-pressed="false">AI</button>
+                <button type="button" data-f="closed" aria-pressed="false">Closed</button>
+              </div>
+            </div>
+            <ul class="ib-convos" id="ib-convos"></ul>
+          </aside>
+          <div class="ib-thread">
+            <header class="ib-head">
+              <span class="avatar" id="ib-av">DB</span>
+              <div class="ib-who"><b id="ib-name">Daniel Brooks</b><small id="ib-ch">Instagram</small></div>
+              <label class="auto-switch" for="ib-auto"><span>AI autopilot</span><span class="switch"><input type="checkbox" id="ib-auto"><i></i></span></label>
+            </header>
+            <div class="ib-escalation" id="ib-esc" hidden></div>
+            <div class="chat ib-msgs" id="ib-msgs" aria-live="polite"></div>
+            <div class="ib-suggest" id="ib-suggest"></div>
+            <form class="ib-compose" id="ib-form">
+              <textarea class="input" id="ib-text" rows="2" placeholder="Write a reply…" aria-label="Reply"></textarea>
+              <button class="btn primary" type="submit" id="ib-send"><svg class="ic sm"><use href="#i-send"/></svg>Send</button>
+            </form>
+          </div>
+          <aside class="ib-profile" id="ib-profile"></aside>
+        </div>
+      </section>
+
+      <!-- ============ ANALYTICS ============ -->
+      <section class="view" id="view-analytics" data-title="Analytics" data-client="ABC Dental" hidden>
+        <div class="page-head">
+          <div>
+            <h2>Analytics</h2>
+            <p>What the AI did for the business in the last 30 days, from first message to the patient sitting in the chair.</p>
+          </div>
+          <div class="head-actions"><button class="btn" type="button" data-fake="Report export is part of the full product."><svg class="ic sm"><use href="#i-file"/></svg>Export report</button></div>
+        </div>
+
+        <div class="an-top">
+          <article class="card">
+            <div class="card-head"><div><h3>Lead to visit funnel</h3><span class="sub">1 Nov – 30 Nov</span></div></div>
+            <div class="card-body"><div class="funnel" id="funnel"></div></div>
+          </article>
+          <article class="card roi">
+            <div class="card-head"><div><h3>Return on investment</h3><span class="sub">Move the sliders to match the business</span></div></div>
+            <div class="card-body">
+              <div class="roi-big"><span class="eyebrow">Value created this month</span><strong class="num" id="roi-total">$0</strong></div>
+              <div class="roi-split">
+                <div><span>Revenue from AI bookings</span><b class="num" id="roi-rev">$0</b></div>
+                <div><span>Staff time saved</span><b class="num" id="roi-time">0 h</b></div>
+              </div>
+              <div class="field"><label for="roi-value">Average appointment value: <b class="num" id="roi-value-out">$180</b></label><input type="range" id="roi-value" min="50" max="1000" step="10" value="180"></div>
+              <div class="field"><label for="roi-rate">Staff cost per hour: <b class="num" id="roi-rate-out">$25</b></label><input type="range" id="roi-rate" min="10" max="80" step="1" value="25"></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="an-mid">
+          <article class="card">
+            <div class="card-head"><div><h3>AI resolution rate</h3><span class="sub">Conversations finished without staff, by day</span></div><span class="pill ok">91% today</span></div>
+            <div class="card-body"><svg id="res-chart" viewBox="0 0 560 210" role="img" aria-label="Line chart of AI resolution rate over 30 days"></svg></div>
+          </article>
+          <article class="card">
+            <div class="card-head"><h3>Where leads come from</h3></div>
+            <div class="card-body donut-wrap" id="donut"></div>
+          </article>
+        </div>
+
+        <div class="an-bot">
+          <article class="card">
+            <div class="card-head"><div><h3>When leads arrive</h3><span class="sub" id="heat-note">Darker means more leads</span></div></div>
+            <div class="card-body"><div class="heat-wrap"><div class="heat" id="heat"></div></div></div>
+          </article>
+          <article class="card">
+            <div class="card-head"><div><h3>Top questions</h3><span class="sub">And how often the AI answered them alone</span></div></div>
+            <div class="card-body table-wrap"><table class="intents"><thead><tr><th>Question</th><th>Asked</th><th>Solved by AI</th></tr></thead><tbody id="intents"></tbody></table></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ BOOKING ============ -->
+      <section class="view" id="view-booking" data-title="Appointment Booking" data-client="ABC Dental" hidden>
+        <div class="page-head">
+          <div>
+            <h2>AI Appointment Booking</h2>
+            <p>The AI replies to new leads, finds a time that suits them, books it into your calendar and sends the confirmation and reminders.</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn" type="button" data-reset="booking"><svg class="ic sm"><use href="#i-reset"/></svg>Reset</button>
+            <button class="btn primary" type="button" data-play="booking"><svg class="ic sm fill"><use href="#i-play"/></svg>Play demo</button>
+          </div>
+        </div>
+
+        <ol class="card flow" id="bk-flow">
+          <li><span class="step-ic"><svg class="ic sm"><use href="#i-message"/></svg></span><span class="lbl"><b>Lead comes in</b><span>WhatsApp, SMS, web</span></span></li>
+          <li><span class="step-ic"><svg class="ic sm"><use href="#i-spark"/></svg></span><span class="lbl"><b>AI talks to them</b><span>Asks what they need</span></span></li>
+          <li><span class="step-ic"><svg class="ic sm"><use href="#i-calendar"/></svg></span><span class="lbl"><b>Checks availability</b><span>Your live calendar</span></span></li>
+          <li><span class="step-ic"><svg class="ic sm"><use href="#i-check"/></svg></span><span class="lbl"><b>Books appointment</b><span>Added to calendar</span></span></li>
+          <li><span class="step-ic"><svg class="ic sm"><use href="#i-bell"/></svg></span><span class="lbl"><b>Confirms &amp; reminds</b><span>SMS + email</span></span></li>
+        </ol>
+
+        <div class="bk-grid">
+          <article class="card chat-card">
+            <div class="chat-head">
+              <span class="avatar">SA</span>
+              <div><b>Sarah Ahmed</b><small><svg class="ic sm"><use href="#i-message"/></svg>WhatsApp · new lead</small></div>
+              <span class="pill brand"><svg class="ic sm"><use href="#i-spark"/></svg>AI replying</span>
+            </div>
+            <div class="chat" id="bk-chat" aria-live="polite"></div>
+            <div class="chat-foot"><span class="fake-input">AI is handling this conversation</span><button class="send" type="button" aria-label="Send (prototype)"><svg class="ic sm"><use href="#i-send"/></svg></button></div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div><h3>Dr. Khan's calendar</h3><span class="sub">Week of Mon 23 Nov 2026</span></div>
+              <div class="cal-legend"><span><i></i>Booked by staff</span><span><i class="ai"></i>Booked by AI</span><span><i class="offer"></i>Offered</span></div>
+            </div>
+            <div class="card-body"><div class="cal-wrap"><div class="cal" id="cal"></div></div></div>
+          </article>
+        </div>
+
+        <div class="lists">
+          <article class="card">
+            <div class="card-head"><h3>Upcoming reminders</h3><span class="sub">24 h before</span></div>
+            <div class="card-body"><ul class="rows" id="bk-reminders"></ul></div>
+          </article>
+          <article class="card">
+            <div class="card-head"><h3>Reschedule &amp; cancel</h3><span class="sub">Handled by AI</span></div>
+            <div class="card-body"><ul class="rows" id="bk-changes"></ul></div>
+          </article>
+          <article class="card">
+            <div class="card-head"><h3>Didn't finish booking</h3><span class="sub">AI follows up</span></div>
+            <div class="card-body"><ul class="rows" id="bk-unfinished"></ul></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ LEADS ============ -->
+      <section class="view" id="view-leads" data-title="Lead Follow-Up" data-client="Northline Roofing" hidden>
+        <div class="page-head">
+          <div>
+            <h2>AI Lead Follow-Up &amp; Qualification</h2>
+            <p>The AI asks your qualification questions, scores each lead, keeps following up until they reply and hands strong leads to your sales team.</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn" type="button" data-reset="leads"><svg class="ic sm"><use href="#i-reset"/></svg>Reset</button>
+            <button class="btn primary" type="button" data-play="leads"><svg class="ic sm fill"><use href="#i-play"/></svg>Play demo</button>
+          </div>
+        </div>
+
+        <div class="board-wrap"><div class="board" id="board"></div></div>
+
+        <div class="ld-grid">
+          <article class="card chat-card">
+            <div class="chat-head">
+              <span class="avatar" id="ld-av">JM</span>
+              <div><b id="ld-name">John Miller</b><small id="ld-src"><svg class="ic sm"><use href="#i-message"/></svg>Website form · New roof</small></div>
+              <span class="pill brand" id="ld-pill"><svg class="ic sm"><use href="#i-spark"/></svg>AI qualifying</span>
+            </div>
+            <div class="chat" id="ld-chat" aria-live="polite"></div>
+            <div class="chat-foot"><span class="fake-input">AI is handling this conversation</span><button class="send" type="button" aria-label="Send (prototype)"><svg class="ic sm"><use href="#i-send"/></svg></button></div>
+          </article>
+
+          <div class="ld-side">
+            <article class="card">
+              <div class="card-head"><h3>Qualification</h3><span class="pill neutral" id="ld-status">New</span></div>
+              <div class="card-body" style="display:grid;gap:16px">
+                <div class="meter">
+                  <div class="meter-top"><span class="eyebrow">Lead score</span><strong class="num"><span id="ld-score">0</span><small>/100</small></strong></div>
+                  <div class="bar"><i id="ld-bar"></i></div>
+                  <div class="bar-scale"><span>Cold</span><span>Warm</span><span>Qualified 70+</span></div>
+                </div>
+                <ul class="qual" id="ld-qual"></ul>
+              </div>
+            </article>
+            <article class="card">
+              <div class="card-head"><h3>Follow-up sequence</h3><span class="sub">Stops when the lead replies</span></div>
+              <div class="card-body"><ol class="timeline" id="ld-seq"></ol></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ CALLS ============ -->
+      <section class="view" id="view-calls" data-title="Call Agent" data-client="ABC Dental" hidden>
+        <div class="page-head">
+          <div>
+            <h2>AI Customer Support Call Agent</h2>
+            <p>The AI answers your phone, answers questions, books appointments, takes messages and transfers to your team when needed.</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn" type="button" data-reset="calls"><svg class="ic sm"><use href="#i-reset"/></svg>Reset</button>
+            <button class="btn primary" type="button" data-play="calls"><svg class="ic sm fill"><use href="#i-play"/></svg>Play demo call</button>
+          </div>
+        </div>
+
+        <div class="call-stats">
+          <article class="card stat"><span>Calls in progress</span><strong class="num">3 <span class="lines" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></strong></article>
+          <article class="card stat"><span>Answered today</span><strong class="num">42</strong></article>
+          <article class="card stat"><span>Avg. time to answer</span><strong class="num">1 sec</strong></article>
+          <article class="card stat"><span>Solved without staff</span><strong class="num">88%</strong></article>
+        </div>
+
+        <div class="call-grid">
+          <div class="live" id="live" data-state="idle">
+            <div class="live-top">
+              <span class="live-state"><span class="dot"></span><span id="live-state">Waiting for calls</span></span>
+              <span class="timer num" id="live-timer">00:00</span>
+            </div>
+            <div class="caller">
+              <span class="caller-av" id="caller-av">?</span>
+              <b id="caller-name">No active call</b>
+              <span id="caller-num">Line 1 · (905) 555-0142</span>
+            </div>
+            <div class="wave" id="wave" aria-hidden="true"></div>
+            <p class="speaker" id="speaker">Press “Play demo call” to hear the AI answer.</p>
+            <div class="live-actions">
+              <button type="button" data-fake="Listening in is part of the full product."><svg class="ic"><use href="#i-headset"/></svg>Listen in</button>
+              <button type="button" data-fake="Taking over a call is part of the full product."><svg class="ic"><use href="#i-mic"/></svg>Take over</button>
+              <button type="button" class="end" data-reset="calls"><svg class="ic"><use href="#i-x"/></svg>End</button>
+            </div>
+          </div>
+
+          <article class="card">
+            <div class="card-head"><h3>Live transcript</h3><span class="pill neutral" id="tr-pill">Idle</span></div>
+            <div class="transcript" id="transcript" aria-live="polite"></div>
+          </article>
+
+          <div class="call-side">
+            <article class="card">
+              <div class="card-head"><h3>Caller details</h3><span class="sub">Collected by AI</span></div>
+              <div class="card-body">
+                <dl class="facts" id="facts"></dl>
+              </div>
+            </article>
+            <article class="card">
+              <div class="card-head"><h3>Call summary</h3><svg class="ic" style="color:var(--faint)"><use href="#i-file"/></svg></div>
+              <div class="card-body"><div class="summary-box" id="summary">The AI writes a summary when the call ends.</div></div>
+            </article>
+          </div>
+        </div>
+
+        <article class="card">
+          <div class="card-head"><h3>Recent calls</h3><span class="sub">Transcripts and summaries saved</span></div>
+          <div class="card-body table-wrap">
+            <table>
+              <thead><tr><th>Time</th><th>Caller</th><th>Reason</th><th>Outcome</th><th>Duration</th><th>Handled by</th></tr></thead>
+              <tbody id="call-log"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============ WORKFLOWS ============ -->
+      <section class="view" id="view-workflows" data-title="Workflows" data-client="ABC Dental" hidden>
+        <div class="page-head">
+          <div>
+            <h2>Workflow Builder</h2>
+            <p>The rules behind each AI system, drawn as a flow. Click any step to see its settings, or run a test lead through it.</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn" type="button" data-fake="Adding steps by drag and drop is part of the full product."><svg class="ic sm"><use href="#i-branch"/></svg>New workflow</button>
+            <button class="btn primary" type="button" data-play="workflows"><svg class="ic sm fill"><use href="#i-play"/></svg>Test run</button>
+          </div>
+        </div>
+        <div class="wf-layout">
+          <aside class="card wf-list-card">
+            <div class="card-head"><h3>Workflows</h3><span class="sub" id="wf-count"></span></div>
+            <ul class="wf-list" id="wf-list"></ul>
+          </aside>
+          <article class="card wf-main">
+            <div class="wf-bar">
+              <div><h3 id="wf-name">Workflow</h3><span class="sub" id="wf-desc"></span></div>
+              <span class="pill ok" id="wf-state">Live</span>
+            </div>
+            <div class="wf-canvas-wrap"><div class="wf-canvas" id="wf-canvas"></div></div>
+          </article>
+          <div class="wf-side">
+            <article class="card">
+              <div class="card-head"><h3>Step settings</h3><span class="sub" id="wf-node-type"></span></div>
+              <div class="card-body" id="wf-inspect"></div>
+            </article>
+            <article class="card">
+              <div class="card-head"><h3>Run log</h3><span class="pill neutral" id="wf-run-pill">Ready</span></div>
+              <div class="card-body"><ol class="run-log" id="wf-log"></ol></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ AI TRAINING ============ -->
+      <section class="view" id="view-training" data-title="AI Training" data-client="ABC Dental" hidden>
+        <div class="page-head">
+          <div>
+            <h2>AI Training</h2>
+            <p>What the AI knows, the rules it must follow, and a playground to test it before customers do.</p>
+          </div>
+          <div class="head-actions"><span class="pill ok"><svg class="ic sm"><use href="#i-shield"/></svg>Answer accuracy 96%</span></div>
+        </div>
+        <div class="tr-grid">
+          <div class="tr-col">
+            <article class="card">
+              <div class="card-head"><div><h3>Knowledge base</h3><span class="sub">The AI only answers from these sources</span></div></div>
+              <div class="card-body">
+                <label class="drop" id="drop" for="drop-input">
+                  <svg class="ic lg"><use href="#i-upload"/></svg>
+                  <b>Drop a file or click to add</b>
+                  <span>Price lists, FAQs, policies, menus, brochures</span>
+                  <input type="file" id="drop-input" hidden>
+                </label>
+                <ul class="sources" id="sources"></ul>
+              </div>
+            </article>
+            <article class="card">
+              <div class="card-head"><div><h3>Guardrails</h3><span class="sub">Rules the AI can never break</span></div><svg class="ic" style="color:var(--accent-text)"><use href="#i-shield"/></svg></div>
+              <div class="card-body"><div class="guards" id="guards"></div></div>
+            </article>
+          </div>
+          <div class="tr-col">
+            <article class="card chat-card">
+              <div class="chat-head">
+                <span class="avatar"><svg class="ic sm"><use href="#i-spark"/></svg></span>
+                <div><b>Test your AI</b><small>Ask anything a patient might ask</small></div>
+                <span class="pill brand">Playground</span>
+              </div>
+              <div class="chat pg-chat" id="pg-chat" aria-live="polite"></div>
+              <div class="pg-chips" id="pg-chips"></div>
+              <form class="ib-compose" id="pg-form">
+                <input class="input" id="pg-input" placeholder="e.g. Do you take insurance?" autocomplete="off" aria-label="Test question">
+                <button class="btn primary" type="submit"><svg class="ic sm"><use href="#i-send"/></svg>Ask</button>
+              </form>
+            </article>
+            <article class="card">
+              <div class="card-head"><div><h3>Needs your review</h3><span class="sub">Answers the AI wasn't sure about</span></div><span class="pill warn" id="rev-count">3</span></div>
+              <div class="card-body"><ul class="reviews" id="reviews"></ul></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ INTEGRATIONS ============ -->
+      <section class="view" id="view-integrations" data-title="Integrations" data-client="ABC Dental" hidden>
+        <div class="page-head">
+          <div>
+            <h2>Integrations</h2>
+            <p>Connect the tools the business already uses. The AI reads calendars, writes to the CRM and messages on every channel.</p>
+          </div>
+          <div class="seg" role="group" aria-label="Filter integrations" id="int-filter"></div>
+        </div>
+        <div class="int-grid" id="int-grid"></div>
+        <div class="dev-grid">
+          <article class="card">
+            <div class="card-head"><div><h3>Sync activity</h3><span class="sub">Last 10 minutes</span></div><span class="pill onair"><span class="dot pulse"></span>Live</span></div>
+            <div class="card-body"><ul class="feed" id="sync-log"></ul></div>
+          </article>
+          <article class="card">
+            <div class="card-head"><div><h3>Developer access</h3><span class="sub">For custom systems</span></div><svg class="ic" style="color:var(--faint)"><use href="#i-code"/></svg></div>
+            <div class="card-body dev">
+              <div class="field"><label for="api-key">API key (test)</label><div class="copy-row"><input class="input mono" id="api-key" value="elv_test_8f2a••••••••••••4f2a" readonly><button class="btn sm" type="button" data-fake="Keys are shown once in the full product.">Reveal</button></div></div>
+              <div class="field"><label for="hook-url">Webhook for new leads</label><div class="copy-row"><input class="input mono" id="hook-url" value="https://hooks.elevnsi.com/v1/abc-dental/leads" readonly><button class="btn sm" type="button" id="copy-hook">Copy</button></div></div>
+              <div class="field"><label>Events sent</label><div class="chips"><span class="pill neutral">lead.created</span><span class="pill neutral">lead.qualified</span><span class="pill neutral">appointment.booked</span><span class="pill neutral">call.completed</span><span class="pill neutral">handoff.requested</span></div></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ CLIENTS (agency) ============ -->
+      <section class="view" id="view-clients" data-title="Clients" data-client="ELEVNSI team" hidden>
+        <div class="page-head">
+          <div>
+            <h2>Client accounts</h2>
+            <p>The ELEVNSI team view. Every business we run AI systems for, with health, alerts and results in one place.</p>
+          </div>
+          <div class="head-actions"><button class="btn primary" type="button" data-fake="Client onboarding is part of the full product."><svg class="ic sm"><use href="#i-building"/></svg>Add client</button></div>
+        </div>
+        <div class="call-stats" id="cl-stats"></div>
+        <div class="cl-grid">
+          <article class="card">
+            <div class="card-head"><h3>All clients</h3><span class="sub">Last 30 days</span></div>
+            <div class="card-body table-wrap">
+              <table class="cl-table"><thead><tr><th>Client</th><th>AI systems</th><th>Leads</th><th>Booked</th><th>AI solved</th><th>Health</th><th></th></tr></thead><tbody id="cl-rows"></tbody></table>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head"><h3>Alerts</h3><span class="pill bad" id="cl-alert-count">2</span></div>
+            <div class="card-body"><ul class="rows alerts" id="cl-alerts"></ul></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ SETUP ============ -->
+      <section class="view" id="view-setup" data-title="Setup" data-client="ABC Dental" hidden>
+        <div class="page-head">
+          <div>
+            <h2>Setup</h2>
+            <p>What the AI knows about the business and how it should behave. In the full product your ELEVNSI team sets this up with you.</p>
+          </div>
+        </div>
+
+        <div class="setup">
+          <nav class="setup-nav" aria-label="Setup sections">
+            <a href="#setup" data-jump="s-business">Business profile</a>
+            <a href="#setup" data-jump="s-services">Services &amp; prices</a>
+            <a href="#setup" data-jump="s-booking">Booking rules</a>
+            <a href="#setup" data-jump="s-qual">Qualification</a>
+            <a href="#setup" data-jump="s-voice">AI voice</a>
+            <a href="#setup" data-jump="s-channels">Channels &amp; alerts</a>
+          </nav>
+
+          <form class="setup-body" id="setup-form">
+            <section class="card form-card" id="s-business">
+              <header><h3>Business profile</h3><p>The AI uses this to answer questions about you.</p></header>
+              <div class="fields">
+                <div class="field"><label for="f-name">Business name</label><input class="input" id="f-name" value="ABC Dental"></div>
+                <div class="field"><label for="f-industry">Industry</label><select class="input" id="f-industry"><option>Dental clinic</option><option>Roofing</option><option>Real estate</option><option>Med spa</option><option>Law firm</option></select></div>
+                <div class="field"><label for="f-phone">Main phone</label><input class="input" id="f-phone" value="(905) 555-0142"></div>
+                <div class="field"><label for="f-email">Notification email</label><input class="input" id="f-email" value="frontdesk@abcdental.example"></div>
+                <div class="field full"><label for="f-address">Address</label><input class="input" id="f-address" value="2150 Hurontario St, Mississauga, ON"></div>
+                <div class="field full">
+                  <label>Opening hours</label>
+                  <div class="hours" id="hours"></div>
+                </div>
+                <div class="field full"><label for="f-policy">Policies the AI can explain</label><textarea class="input" id="f-policy" rows="3">Please arrive 10 minutes early. Cancel or reschedule at least 24 hours before your visit. We accept most insurance plans and direct billing.</textarea></div>
+              </div>
+            </section>
+
+            <section class="card form-card" id="s-services">
+              <header><h3>Services &amp; prices</h3><p>What the AI can book and the prices it may quote.</p></header>
+              <div class="table-wrap">
+                <table class="svc-table">
+                  <thead><tr><th>Service</th><th>Length</th><th>Price</th><th>AI can book</th></tr></thead>
+                  <tbody id="svc"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="card form-card" id="s-booking">
+              <header><h3>Booking rules</h3><p>How appointments are offered, confirmed and reminded.</p></header>
+              <div class="fields">
+                <div class="field"><label for="f-cal">Connected calendar</label><select class="input" id="f-cal"><option>Google Calendar · Dr. Khan</option><option>Outlook · Front desk</option><option>Calendly</option></select></div>
+                <div class="field"><label for="f-offer">Slots to offer at once</label><select class="input" id="f-offer"><option>2 options</option><option>3 options</option><option>4 options</option></select></div>
+                <div class="field"><label for="f-buffer">Gap between appointments</label><select class="input" id="f-buffer"><option>None</option><option selected>10 minutes</option><option>15 minutes</option></select></div>
+                <div class="field"><label for="f-rem">Reminders</label><select class="input" id="f-rem"><option>24 h before</option><option selected>24 h and 2 h before</option><option>48 h, 24 h and 2 h before</option></select></div>
+              </div>
+            </section>
+
+            <section class="card form-card" id="s-qual">
+              <header><h3>Qualification</h3><p>Questions the AI asks new leads, in this order, and when to follow up.</p></header>
+              <ul class="qlist" id="qlist"></ul>
+              <div class="fields">
+                <div class="field"><label for="f-thresh">Qualified when score is at least</label><select class="input" id="f-thresh"><option>60</option><option selected>70</option><option>80</option></select></div>
+                <div class="field"><label for="f-fu">Follow-up schedule</label><select class="input" id="f-fu"><option>Day 1, 3, 7</option><option selected>Day 2, 5, 9</option><option>Every 3 days, max 5</option></select></div>
+              </div>
+            </section>
+
+            <section class="card form-card" id="s-voice">
+              <header><h3>AI voice &amp; tone</h3><p>How the call agent sounds on the phone.</p></header>
+              <div class="voices">
+                <label class="voice"><input type="radio" name="voice" id="v-ava" checked><b>Ava</b><span>Warm, calm, female</span></label>
+                <label class="voice"><input type="radio" name="voice" id="v-leo"><b>Leo</b><span>Friendly, clear, male</span></label>
+                <label class="voice"><input type="radio" name="voice" id="v-noor"><b>Noor</b><span>Professional, bilingual</span></label>
+              </div>
+              <div class="fields">
+                <div class="field"><label for="f-greet">Greeting</label><input class="input" id="f-greet" value="Hi, thank you for calling ABC Dental. How can I help you today?"></div>
+                <div class="field"><label for="f-tone">Tone</label><select class="input" id="f-tone"><option>Friendly</option><option>Professional</option><option>Short and direct</option></select></div>
+              </div>
+            </section>
+
+            <section class="card form-card" id="s-channels">
+              <header><h3>Channels &amp; alerts</h3><p>Where the AI works and when it tells your team.</p></header>
+              <div class="toggles" id="toggles"></div>
+            </section>
+
+            <div class="save-bar">
+              <span>Prototype: changes here are not saved.</span>
+              <div class="head-actions"><button class="btn sm" type="reset" style="background:transparent;color:#fff;border-color:#3a413c">Discard</button><button class="btn sm primary" type="submit">Save changes</button></div>
+            </div>
+          </form>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<dialog class="cmdk" id="cmdk" closedby="any" aria-label="Command menu">
+  <div class="cmdk-in"><svg class="ic"><use href="#i-search"/></svg><input id="cmdk-input" placeholder="Search pages, conversations, demos…" autocomplete="off" role="combobox" aria-controls="cmdk-list" aria-expanded="true"><kbd>Esc</kbd></div>
+  <ul class="cmdk-list" id="cmdk-list" role="listbox"></ul>
+  <footer class="cmdk-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Ctrl</kbd><kbd>K</kbd> toggle</span></footer>
+</dialog>
+
+<script src="/demo/data.js"></script>
+<script src="/demo/app.js"></script>
+<script src="/demo/advanced.js"></script>
+</body>
+</html>

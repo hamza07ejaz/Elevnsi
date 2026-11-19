@@ -5,6 +5,7 @@
   const root = document.getElementById('admin-root');
   if (!S || !root) return;
 
+  const TABS = ['leads', 'settings', 'demo'];
   const STATUSES = [['new', 'New'], ['contacted', 'Contacted'], ['qualified', 'Qualified'], ['won', 'Won'], ['lost', 'Lost']];
   const FIELDS = [
     { card: 'Messaging', icon: 'i-whatsapp', items: [
@@ -152,6 +153,7 @@
           <div class="admin-tabs" role="tablist" aria-label="Admin sections">
             <button type="button" role="tab" id="tab-leads" aria-controls="panel-leads" aria-selected="true">${icon('i-users')}Leads <span class="count" id="lead-count">0</span></button>
             <button type="button" role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false">${icon('i-gear')}Contact details</button>
+            <button type="button" role="tab" id="tab-demo" aria-controls="panel-demo" aria-selected="false">${icon('i-shield')}Demo access</button>
           </div>
           <div class="admin-actions">
             <a class="btn btn-ghost btn-sm" href="#top">Back to site</a>
@@ -206,16 +208,56 @@
             </div>
           </form>
         </section>
+
+        <section id="panel-demo" role="tabpanel" aria-labelledby="tab-demo" hidden>
+          <h1 class="admin-h">Demo access</h1>
+          <p class="admin-sub">The console demo is private. Create a personal link for each person you want to show it to, and switch it off whenever you like.</p>
+          ${access.mode === 'api' ? `
+          <div class="inv-layout">
+            <form class="settings-card inv-form" id="inv-form" novalidate>
+              <h3>${icon('i-users')}New invite link</h3>
+              <div class="field">
+                <label for="inv-name">Who is it for? <span class="req" aria-hidden="true">*</span></label>
+                <input class="input" id="inv-name" name="name" maxlength="80" required placeholder="e.g. Ali Khan" autocomplete="off" data-error="inv-name-err">
+                <p class="error-msg" id="inv-name-err">${icon('i-alert')}Please enter who this link is for.</p>
+              </div>
+              <div class="field">
+                <label for="inv-note">Company or note <span class="opt">(optional)</span></label>
+                <input class="input" id="inv-note" name="note" maxlength="120" placeholder="e.g. Smile Dental, Toronto" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="inv-days">Link works for</label>
+                <select class="input" id="inv-days" name="days">
+                  <option value="1">1 day</option><option value="3">3 days</option><option value="7" selected>7 days</option>
+                  <option value="14">14 days</option><option value="30">30 days</option><option value="0">No expiry</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary">Create link</button>
+              <div class="inv-new" id="inv-new" hidden></div>
+            </form>
+            <div>
+              <div class="stats inv-stats" id="inv-stats"></div>
+              <div class="toolbar">
+                <button type="button" class="btn btn-outline btn-sm" id="inv-refresh">${icon('i-refresh')}Refresh</button>
+                <span class="save-state" id="inv-state" role="status"></span>
+              </div>
+              <div class="leads-table" id="inv-table" aria-live="polite"></div>
+            </div>
+          </div>` : `
+          <p class="admin-mode-note">${icon('i-alert')}<span>Demo invite links work on your live website (Vercel), where the private demo is protected by the server. Open the admin panel on your live site to create them.</span></p>`}
+        </section>
       </div>`;
 
     // Tabs
-    const tabs = [['leads', root.querySelector('#tab-leads')], ['settings', root.querySelector('#tab-settings')]];
-    tabs.forEach(([name, btn]) => btn.addEventListener('click', () => setTab(name)));
+    TABS.forEach((name) => root.querySelector(`#tab-${name}`).addEventListener('click', () => setTab(name)));
     root.querySelector('.admin-tabs').addEventListener('keydown', (e) => {
       if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-      setTab(ui.tab === 'leads' ? 'settings' : 'leads');
+      const i = TABS.indexOf(ui.tab) + (e.key === 'ArrowRight' ? 1 : -1);
+      setTab(TABS[(i + TABS.length) % TABS.length]);
       root.querySelector(`#tab-${ui.tab}`).focus();
     });
+    setTab(ui.tab);
+    if (access.mode === 'api') bindInvites();
 
     // Filters
     root.querySelector('#lead-search').addEventListener('input', (e) => { ui.q = e.target.value.trim().toLowerCase(); renderLeads(); });
@@ -238,10 +280,166 @@
 
   function setTab(name) {
     ui.tab = name;
-    root.querySelector('#tab-leads').setAttribute('aria-selected', String(name === 'leads'));
-    root.querySelector('#tab-settings').setAttribute('aria-selected', String(name === 'settings'));
-    root.querySelector('#panel-leads').hidden = name !== 'leads';
-    root.querySelector('#panel-settings').hidden = name !== 'settings';
+    TABS.forEach((t) => {
+      root.querySelector(`#tab-${t}`).setAttribute('aria-selected', String(t === name));
+      root.querySelector(`#panel-${t}`).hidden = t !== name;
+    });
+    if (name === 'demo' && access.mode === 'api' && !inv.loaded) loadInvites();
+  }
+
+  /* ---------- Demo invites ---------- */
+  const inv = { list: [], loaded: false, error: '', confirm: null, fresh: null };
+  const fmtDT = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  const STATE_LABEL = { active: 'Active', expired: 'Expired', revoked: 'Switched off' };
+  const ago = (iso) => {
+    if (!iso) return 'Not opened yet';
+    const m = Math.round((Date.now() - Date.parse(iso)) / 60000);
+    if (m < 1) return 'Opened just now';
+    if (m < 60) return `Opened ${m} min ago`;
+    if (m < 1440) return `Opened ${Math.round(m / 60)} h ago`;
+    return `Opened ${fmtDate.format(new Date(iso))}`;
+  };
+  const shareText = (i) => `Hi ${i.name.split(' ')[0]}, here is your private ELEVNSI demo: ${i.link}`;
+
+  function bindInvites() {
+    const form = root.querySelector('#inv-form');
+    form.addEventListener('submit', createInvite);
+    form.querySelector('#inv-name').addEventListener('input', (e) => e.target.setAttribute('aria-invalid', 'false'));
+    root.querySelector('#inv-refresh').addEventListener('click', loadInvites);
+    root.querySelector('#inv-table').addEventListener('click', onInviteClick);
+    root.querySelector('#inv-new').addEventListener('click', onInviteClick);
+  }
+
+  async function loadInvites() {
+    const state = root.querySelector('#inv-state');
+    if (state) { state.textContent = 'Loading…'; state.className = 'save-state'; }
+    try { inv.list = await S.invites.list(); inv.error = ''; }
+    catch (err) {
+      if (err.code === 'unauthorized') { built = false; return renderLogin('Your session ended. Please sign in again.'); }
+      inv.error = err.message || 'Invites could not be loaded.';
+    }
+    inv.loaded = true;
+    if (state) state.textContent = '';
+    renderInvites();
+  }
+
+  async function createInvite(e) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const name = form.querySelector('#inv-name');
+    form.classList.add('was-submitted');
+    if (!name.value.trim()) { name.setAttribute('aria-invalid', 'true'); name.focus(); return; }
+    const btn = form.querySelector('button[type="submit"]');
+    btn.setAttribute('aria-busy', 'true'); btn.textContent = 'Creating…';
+    try {
+      const created = await S.invites.create({ name: name.value.trim(), note: form.querySelector('#inv-note').value.trim(), days: Number(form.querySelector('#inv-days').value) });
+      inv.list.unshift(created);
+      inv.fresh = created.code;
+      form.reset(); form.classList.remove('was-submitted');
+      renderInvites();
+      root.querySelector('#inv-new [data-inv="copy"]')?.focus();
+    } catch (err) {
+      if (err.code === 'unauthorized') { built = false; return renderLogin('Your session ended. Please sign in again.'); }
+      const out = root.querySelector('#inv-state'); out.textContent = err.message || 'Couldn’t create the link. Please try again.'; out.className = 'save-state err';
+    } finally { btn.removeAttribute('aria-busy'); btn.textContent = 'Create link'; }
+  }
+
+  function renderInvites() {
+    if (!built || access.mode !== 'api') return;
+    const list = inv.list;
+    const stats = [
+      ['Active links', list.filter((i) => i.state === 'active').length, true],
+      ['Opened', list.filter((i) => i.firstOpenedAt).length, false],
+      ['Total views', list.reduce((n, i) => n + (i.views || 0), 0), false]
+    ];
+    root.querySelector('#inv-stats').innerHTML = stats.map(([l, n, hl]) => `<div class="stat ${hl ? 'hl' : ''}"><span>${l}</span><strong>${inv.loaded ? n : '–'}</strong></div>`).join('');
+
+    // The link that was just created, ready to copy or send
+    const fresh = list.find((i) => i.code === inv.fresh);
+    const box = root.querySelector('#inv-new');
+    box.hidden = !fresh;
+    if (fresh) {
+      box.dataset.code = fresh.code;
+      box.innerHTML = `
+        <p><strong>Link for ${esc(fresh.name)} is ready.</strong> Only people with this link can open the demo.</p>
+        <input class="input inv-link" readonly value="${esc(fresh.link)}" aria-label="Invite link for ${esc(fresh.name)}">
+        <div class="inv-share">
+          <button type="button" class="btn btn-dark btn-sm" data-inv="copy">Copy link</button>
+          <a class="btn btn-outline btn-sm" href="https://wa.me/?text=${encodeURIComponent(shareText(fresh))}" target="_blank" rel="noopener">${icon('i-whatsapp')}WhatsApp</a>
+          <a class="btn btn-outline btn-sm" href="mailto:?subject=${encodeURIComponent('Your private ELEVNSI demo')}&body=${encodeURIComponent(shareText(fresh))}">${icon('i-mail')}Email</a>
+        </div>`;
+    }
+
+    const table = root.querySelector('#inv-table');
+    if (!inv.loaded) { table.innerHTML = '<div class="empty">Loading invites…</div>'; return; }
+    if (inv.error && !list.length) { table.innerHTML = `<div class="empty"><strong>Invites unavailable</strong>${esc(inv.error)}</div>`; return; }
+    if (!list.length) {
+      table.innerHTML = `<div class="empty"><span class="icon-tile">${icon('i-shield')}</span><strong>No invite links yet</strong>Create a link for the first person you want to show the demo to.</div>`;
+      return;
+    }
+    table.innerHTML = list.map((i) => `
+      <div class="inv-row" data-code="${esc(i.code)}">
+        <div class="inv-who"><strong>${esc(i.name)}</strong><small>${esc(i.note || 'No note')}</small></div>
+        <div class="inv-meta">
+          <span class="inv-pill ${i.state}">${STATE_LABEL[i.state] || i.state}</span>
+          <small>${i.state === 'revoked' ? 'Access ended' : i.expiresAt ? `${i.state === 'expired' ? 'Expired' : 'Expires'} ${fmtDT.format(new Date(i.expiresAt))}` : 'No expiry'}</small>
+        </div>
+        <div class="inv-seen"><strong>${esc(ago(i.lastOpenedAt))}</strong><small>${i.views || 0} view${i.views === 1 ? '' : 's'} · created ${fmtDate.format(new Date(i.createdAt))}</small></div>
+        <div class="inv-actions">
+          <button type="button" class="btn btn-outline btn-sm" data-inv="copy">Copy link</button>
+          ${i.state === 'revoked'
+            ? '<button type="button" class="btn btn-outline btn-sm" data-inv="restore">Switch on</button>'
+            : i.state === 'expired'
+              ? '<button type="button" class="btn btn-outline btn-sm" data-inv="extend">Extend 7 days</button>'
+              : '<button type="button" class="btn btn-outline btn-sm" data-inv="revoke">Switch off</button>'}
+          <button type="button" class="icon-btn" data-inv="ask-delete" aria-label="Delete link for ${esc(i.name)}">${icon('i-trash')}</button>
+        </div>
+        ${inv.confirm === i.code ? `
+          <div class="confirm-del" role="alert">
+            <span>Delete the link for ${esc(i.name)}? It will stop working and its history is removed.</span>
+            <button type="button" class="btn btn-danger" data-inv="delete">Delete</button>
+            <button type="button" class="btn btn-outline" data-inv="cancel">Cancel</button>
+          </div>` : ''}
+      </div>`).join('');
+  }
+
+  async function onInviteClick(e) {
+    const btn = e.target.closest('[data-inv]');
+    if (!btn) return;
+    const code = btn.closest('[data-code]')?.dataset.code;
+    const item = inv.list.find((i) => i.code === code);
+    if (!item) return;
+    const act = btn.dataset.inv;
+    const out = root.querySelector('#inv-state');
+    const replace = (next) => { inv.list = inv.list.map((i) => (i.code === next.code ? next : i)); renderInvites(); };
+    try {
+      if (act === 'copy') {
+        try { await navigator.clipboard.writeText(item.link); btn.textContent = 'Copied'; }
+        catch (_) { const field = root.querySelector('#inv-new .inv-link'); if (field && inv.fresh === code) { field.select(); btn.textContent = 'Selected, press Ctrl+C'; } else { prompt('Copy this link:', item.link); } }
+        setTimeout(() => { btn.textContent = 'Copy link'; }, 2000);
+      } else if (act === 'revoke' || act === 'restore') {
+        btn.setAttribute('aria-busy', 'true');
+        replace(await S.invites.update(code, { revoked: act === 'revoke' }));
+        out.textContent = act === 'revoke' ? `${item.name}'s link is switched off.` : `${item.name}'s link works again.`; out.className = 'save-state ok';
+      } else if (act === 'extend') {
+        btn.setAttribute('aria-busy', 'true');
+        replace(await S.invites.update(code, { days: 7 }));
+        out.textContent = `${item.name}'s link works for 7 more days.`; out.className = 'save-state ok';
+      } else if (act === 'ask-delete') { inv.confirm = code; renderInvites(); root.querySelector(`[data-code="${CSS.escape(code)}"] [data-inv="cancel"]`)?.focus(); }
+      else if (act === 'cancel') { inv.confirm = null; renderInvites(); }
+      else if (act === 'delete') {
+        btn.setAttribute('aria-busy', 'true');
+        await S.invites.remove(code);
+        inv.list = inv.list.filter((i) => i.code !== code);
+        inv.confirm = null; if (inv.fresh === code) inv.fresh = null;
+        renderInvites();
+        out.textContent = 'Link deleted.'; out.className = 'save-state ok';
+      }
+    } catch (err) {
+      if (err.code === 'unauthorized') { built = false; return renderLogin('Your session ended. Please sign in again.'); }
+      btn.removeAttribute('aria-busy');
+      out.textContent = err.message || 'That didn’t work. Please try again.'; out.className = 'save-state err';
+    }
   }
 
   /* ---------- Data ---------- */

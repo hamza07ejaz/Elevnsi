@@ -212,8 +212,16 @@ window.ElevStore = (() => {
     return { status: 'saved' };
   }
 
+  /* ---------- Private demo invites (site backend only) ---------- */
+  const invites = {
+    list: () => api('/admin/demo', { auth: true }).then((d) => d.invites || []),
+    create: (data) => api('/admin/demo', { method: 'POST', body: data, auth: true }).then((d) => d.invite),
+    update: (code, data) => api('/admin/demo', { method: 'PATCH', body: { code, ...data }, auth: true }).then((d) => d.invite),
+    remove: (code) => api('/admin/demo?code=' + encodeURIComponent(code), { method: 'DELETE', auth: true })
+  };
+
   return {
     access, login, logout, addLead, watchLeads, refreshLeads, updateLead, deleteLead,
-    getSlots, watchContact, saveContact, saveFile, mode: () => ctx().then((c) => c.mode)
+    getSlots, watchContact, saveContact, saveFile, invites, mode: () => ctx().then((c) => c.mode)
   };
 })();
