@@ -5,7 +5,34 @@
   const root = document.getElementById('admin-root');
   if (!S || !root) return;
 
-  const TABS = ['leads', 'calls', 'settings', 'demo'];
+  const TABS = ['leads', 'calls', 'settings', 'demo', 'integrations'];
+  const INT_CARDS = [
+    { id: 'vapi', title: 'Vapi (AI voice)', icon: 'i-headset', test: true,
+      help: 'vapi.ai → Dashboard → API Keys → copy the <strong>Private</strong> key.',
+      fields: [
+        { k: 'VAPI_API_KEY', label: 'Private API key', secret: true },
+        { k: 'VAPI_MODEL', label: 'AI model', select: true, hint: 'Haiku 5.5 is fastest and cheapest. Sonnet is smarter but replies a little slower.' },
+        { k: 'VAPI_PHONE_NUMBER_ID', label: 'Vapi phone number ID', hint: 'Optional. Only if you added the number inside Vapi yourself; otherwise leave empty.' }
+      ] },
+    { id: 'twilio', title: 'Twilio (phone number)', icon: 'i-phone', test: true,
+      help: 'Twilio Console home page: Account SID and Auth Token. Phone Numbers → Active numbers for your number.',
+      fields: [
+        { k: 'TWILIO_ACCOUNT_SID', label: 'Account SID', ph: 'AC…' },
+        { k: 'TWILIO_AUTH_TOKEN', label: 'Auth Token', secret: true },
+        { k: 'TWILIO_PHONE_NUMBER', label: 'Phone number', ph: '+14165550199' },
+        { k: 'DEFAULT_COUNTRY_CODE', label: 'Default country code', ph: '1', hint: 'Used when a number is typed without its country code (1 = Canada/US).' }
+      ] },
+    { id: 'resend', title: 'Email (Resend)', icon: 'i-mail', test: true,
+      help: 'resend.com → API Keys → Create. Verify your domain in Resend so customer emails are delivered.',
+      fields: [
+        { k: 'RESEND_API_KEY', label: 'API key', secret: true, ph: 're_…' },
+        { k: 'MAIL_FROM', label: 'Send emails from', ph: 'ELEVNSI <hello@elevnsi.com>' },
+        { k: 'ADMIN_EMAIL', label: 'Send notifications to', ph: 'you@gmail.com' }
+      ] },
+    { id: 'site', title: 'Website', icon: 'i-globe',
+      help: 'Your exact live address, including www if your site uses it. Used for phone call events and links in emails.',
+      fields: [{ k: 'SITE_URL', label: 'Live website address', ph: 'https://www.elevnsi.com' }] }
+  ];
   const STATUSES = [['new', 'New'], ['contacted', 'Contacted'], ['qualified', 'Qualified'], ['won', 'Won'], ['lost', 'Lost']];
   const FIELDS = [
     { card: 'Messaging', icon: 'i-whatsapp', items: [
@@ -157,6 +184,7 @@
             <button type="button" role="tab" id="tab-calls" aria-controls="panel-calls" aria-selected="false">${icon('i-phone')}AI Calls</button>
             <button type="button" role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false">${icon('i-gear')}Contact details</button>
             <button type="button" role="tab" id="tab-demo" aria-controls="panel-demo" aria-selected="false">${icon('i-shield')}Demo access</button>
+            <button type="button" role="tab" id="tab-integrations" aria-controls="panel-integrations" aria-selected="false">${icon('i-plug')}Integrations</button>
           </div>
           <div class="admin-actions">
             <a class="btn btn-ghost btn-sm" href="#top">Back to site</a>
@@ -309,6 +337,37 @@
           </form>
         </section>
 
+        <section id="panel-integrations" role="tabpanel" aria-labelledby="tab-integrations" hidden>
+          <h1 class="admin-h">Integrations</h1>
+          <p class="admin-sub">Paste your API keys here instead of in Vercel. They're encrypted in your database, take effect within seconds (no redeploy), and are never shown again in full.</p>
+          ${access.mode === 'api' ? `
+          <div id="int-alert"></div>
+          <div class="settings-grid int-grid" id="int-cards">
+            ${INT_CARDS.map((c) => `
+              <form class="settings-card int-card" data-card="${c.id}" novalidate>
+                <h3>${icon(c.icon)}${c.title}</h3>
+                <p class="hint">${c.help}</p>
+                ${c.fields.map((f) => `
+                  <div class="field">
+                    <div class="int-label"><label for="int-${f.k}">${f.label}</label><span class="int-src" id="src-${f.k}"></span></div>
+                    ${f.select
+                      ? `<select class="input" id="int-${f.k}" data-key="${f.k}"></select>`
+                      : `<input class="input" id="int-${f.k}" data-key="${f.k}" type="${f.secret ? 'password' : 'text'}" autocomplete="${f.secret ? 'new-password' : 'off'}" spellcheck="false" autocapitalize="off">`}
+                    ${f.hint ? `<span class="hint">${f.hint}</span>` : ''}
+                    <button type="button" class="int-clear" data-clear="${f.k}" hidden>Remove saved value</button>
+                  </div>`).join('')}
+                ${c.id === 'vapi' ? '<p class="hint" id="int-webhook"></p>' : ''}
+                <div class="int-actions">
+                  <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                  ${c.test ? `<button type="button" class="btn btn-outline btn-sm" data-test="${c.id}">Test connection</button>` : ''}
+                </div>
+                <p class="save-state" data-state="${c.id}" role="status"></p>
+              </form>`).join('')}
+          </div>
+          <p class="admin-mode-note int-note">${icon('i-shield')}<span>Your admin password (<code>ADMIN_PASSWORD</code>), <code>SESSION_SECRET</code> and the database connection stay in Vercel, because the admin panel needs them to start. If you change <code>ADMIN_PASSWORD</code> without a <code>SESSION_SECRET</code>, keys saved here have to be entered again.</span></p>` : `
+          <p class="admin-mode-note">${icon('i-alert')}<span>API keys can be saved on your live website (Vercel). Open the admin panel there.</span></p>`}
+        </section>
+
         <section id="panel-demo" role="tabpanel" aria-labelledby="tab-demo" hidden>
           <h1 class="admin-h">Demo access</h1>
           <p class="admin-sub">The console demo is private. Create a personal link for each person you want to show it to, and switch it off whenever you like.</p>
@@ -357,7 +416,7 @@
       root.querySelector(`#tab-${ui.tab}`).focus();
     });
     setTab(ui.tab);
-    if (access.mode === 'api') { bindInvites(); bindCalls(); }
+    if (access.mode === 'api') { bindInvites(); bindCalls(); bindIntegrations(); }
 
     // Filters
     root.querySelector('#lead-search').addEventListener('input', (e) => { ui.q = e.target.value.trim().toLowerCase(); renderLeads(); });
@@ -385,11 +444,83 @@
       root.querySelector(`#panel-${t}`).hidden = t !== name;
     });
     if (name === 'demo' && access.mode === 'api' && !inv.loaded) loadInvites();
+    if (name === 'integrations' && access.mode === 'api') loadIntegrations();
     clearInterval(cl.timer);
     if (name === 'calls' && access.mode === 'api') {
       loadCalls();
       cl.timer = setInterval(() => { if (!document.hidden) loadCalls(true); }, 15000);
     }
+  }
+
+  /* ---------- Integrations (API keys) ---------- */
+  const SRC_LABEL = { admin: 'Saved here', vercel: 'From Vercel', '': 'Not set' };
+  function bindIntegrations() {
+    const box = root.querySelector('#int-cards');
+    box.addEventListener('submit', saveCard);
+    box.addEventListener('click', async (e) => {
+      const clear = e.target.closest('[data-clear]');
+      const test = e.target.closest('[data-test]');
+      if (clear) {
+        const card = clear.closest('[data-card]');
+        clear.setAttribute('aria-busy', 'true');
+        try { renderIntegrations(await S.integrations.save({}, [clear.dataset.clear])); cardState(card.dataset.card, 'Removed. Using the Vercel value if there is one.', 'ok'); }
+        catch (err) { if (!callAuthErr(err)) cardState(card.dataset.card, err.message || 'Couldn’t remove it.', 'err'); }
+        finally { clear.removeAttribute('aria-busy'); }
+      }
+      if (test) {
+        test.setAttribute('aria-busy', 'true'); cardState(test.dataset.test, 'Testing…');
+        try { const r = await S.integrations.test(test.dataset.test); cardState(test.dataset.test, r.message, r.ok ? 'ok' : 'err'); }
+        catch (err) { if (!callAuthErr(err)) cardState(test.dataset.test, err.message || 'The test couldn’t run.', 'err'); }
+        finally { test.removeAttribute('aria-busy'); }
+      }
+    });
+  }
+  function cardState(id, msg, kind = '') { const el = root.querySelector(`[data-state="${id}"]`); if (el) { el.textContent = msg; el.className = 'save-state ' + kind; } }
+  async function loadIntegrations() {
+    try { renderIntegrations(await S.integrations.get()); }
+    catch (err) { if (!callAuthErr(err)) root.querySelector('#int-alert').innerHTML = `<p class="admin-mode-note">${icon('i-alert')}<span>${esc(err.message || 'Integrations could not be loaded.')}</span></p>`; }
+  }
+  function renderIntegrations(d) {
+    if (!built || !d?.fields) return;
+    root.querySelector('#int-alert').innerHTML = d.unreadable
+      ? `<p class="admin-mode-note">${icon('i-alert')}<span>Keys saved earlier can't be read anymore, because <code>ADMIN_PASSWORD</code> or <code>SESSION_SECRET</code> changed in Vercel. Please enter them again.</span></p>` : '';
+    INT_CARDS.forEach((c) => c.fields.forEach((f) => {
+      const st = d.fields[f.k] || {};
+      const src = root.querySelector('#src-' + f.k);
+      src.textContent = SRC_LABEL[st.source] || 'Not set';
+      src.className = 'int-src is-' + (st.source || 'none');
+      const input = root.querySelector('#int-' + f.k);
+      if (f.select) {
+        input.innerHTML = `<option value="">${st.source === 'vercel' ? `From Vercel (${esc(st.preview)})` : 'Default (claude-haiku-5-5)'}</option>` +
+          d.models.map((m) => `<option value="${esc(m)}" ${st.source === 'admin' && st.preview === m ? 'selected' : ''}>${esc(m)}</option>`).join('');
+      } else {
+        input.value = '';
+        input.placeholder = st.preview ? `${st.preview}  (type to replace)` : (f.k === 'SITE_URL' && d.suggestedSiteUrl.startsWith('https') ? d.suggestedSiteUrl : f.ph || '');
+      }
+      root.querySelector(`[data-clear="${f.k}"]`).hidden = st.source !== 'admin';
+    }));
+    const wh = root.querySelector('#int-webhook');
+    if (wh) wh.innerHTML = d.fields.VAPI_WEBHOOK_SECRET?.source ? `${icon('i-check')} Webhook secret: set (${d.fields.VAPI_WEBHOOK_SECRET.source === 'admin' ? 'created automatically' : 'from Vercel'}).` : 'Webhook secret: created automatically when you save your Vapi key.';
+  }
+  async function saveCard(e) {
+    e.preventDefault();
+    const form = e.target.closest('[data-card]');
+    const id = form.dataset.card;
+    const values = {}; const clear = [];
+    form.querySelectorAll('[data-key]').forEach((el) => {
+      const v = el.value.trim();
+      if (el.tagName === 'SELECT') { if (v) values[el.dataset.key] = v; else clear.push(el.dataset.key); }
+      else if (v) values[el.dataset.key] = v;
+    });
+    if (!Object.keys(values).length && !clear.length) { cardState(id, 'Type a new value first. Empty fields keep what is saved.', 'err'); return; }
+    const btn = form.querySelector('button[type="submit"]');
+    btn.setAttribute('aria-busy', 'true'); cardState(id, 'Saving…');
+    try {
+      renderIntegrations(await S.integrations.save(values, clear));
+      cl.data = null; // AI Calls tab re-reads its setup status
+      cardState(id, id === 'vapi' || id === 'twilio' ? 'Saved. Press Test connection, then AI Calls → Connect phone number.' : 'Saved. Active within a few seconds.', 'ok');
+    } catch (err) { if (!callAuthErr(err)) cardState(id, err.message || 'Couldn’t save. Please try again.', 'err'); }
+    finally { btn.removeAttribute('aria-busy'); }
   }
 
   /* ---------- AI calls ---------- */
@@ -435,14 +566,17 @@
       <div class="calls-setup ${ready ? 'ready' : ''}">
         <div class="cs-head">
           <div><strong>${ready ? `Your AI phone line is live${d.connection.number ? `: ${esc(d.connection.number)}` : ''}` : 'Finish setting up your AI phone line'}</strong>
-          <small>${ready ? 'Incoming calls to this number are answered by the AI. See the setup guide in the README to change anything.' : 'Follow the steps in the setup guide (README), then press Connect.'}</small></div>
-          ${s.vapiKey && s.webhookSecret ? `<button type="button" class="btn ${s.connected ? 'btn-outline' : 'btn-primary'} btn-sm" data-setup="connect">${s.connected ? 'Reconnect number' : 'Connect phone number'}</button>` : ''}
+          <small>${ready ? 'Incoming calls to this number are answered by the AI. Change keys in the Integrations tab.' : 'Add your keys in the Integrations tab, then press Connect.'}</small></div>
+          <div class="cs-buttons">
+            ${ready ? '' : '<button type="button" class="btn btn-outline btn-sm" data-setup="integrations">Open Integrations</button>'}
+            ${s.vapiKey && s.webhookSecret ? `<button type="button" class="btn ${s.connected ? 'btn-outline' : 'btn-primary'} btn-sm" data-setup="connect">${s.connected ? 'Reconnect number' : 'Connect phone number'}</button>` : ''}
+          </div>
         </div>
         ${ready ? '' : `<ul class="cs-steps">
-          ${item(s.vapiKey, 'Vapi API key added', 'Add VAPI_API_KEY in Vercel → Settings → Environment Variables, then redeploy.')}
-          ${item(s.webhookSecret, 'Webhook secret added', 'Add VAPI_WEBHOOK_SECRET (any long random text) in Vercel, then redeploy.')}
-          ${item(s.siteUrl, 'Site address set', `Add SITE_URL with your exact live address, e.g. https://www.elevnsi.com, then redeploy and press Reconnect. Calls are currently sent to ${esc(s.webhookUrl)}.`)}
-          ${item(s.twilio || s.connected, 'Twilio number added', 'Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER in Vercel, then redeploy.')}
+          ${item(s.vapiKey, 'Vapi API key added', 'Paste your Vapi private key in Integrations → Vapi.')}
+          ${item(s.webhookSecret, 'Webhook secret ready', 'Created automatically when you save your Vapi key in Integrations.')}
+          ${item(s.siteUrl, 'Website address set', `Enter your live address in Integrations → Website (e.g. https://www.elevnsi.com), then press Reconnect. Calls are currently sent to ${esc(s.webhookUrl)}.`)}
+          ${item(s.twilio || s.connected, 'Twilio number added', 'Enter your Twilio Account SID, Auth Token and phone number in Integrations → Twilio.')}
           ${item(s.connected, 'Phone number connected', 'Press “Connect phone number” above.')}
         </ul>`}
         <p class="save-state" id="setup-state" role="status"></p>
@@ -450,6 +584,7 @@
   }
 
   async function onSetupClick(e) {
+    if (e.target.closest('[data-setup="integrations"]')) { setTab('integrations'); scrollTo(0, 0); return; }
     const btn = e.target.closest('[data-setup="connect"]');
     if (!btn) return;
     const out = root.querySelector('#setup-state');

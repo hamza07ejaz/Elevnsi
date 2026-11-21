@@ -92,23 +92,14 @@ Your AI answers your business number 24/7 and can call people back. On a call it
 1. **Vapi account:** sign up at https://vapi.ai → Dashboard → **API Keys** → copy the **Private** key.
 2. **Twilio account and number:** sign up at https://www.twilio.com → **upgrade** the account (trial accounts can only call your own verified numbers and play a trial message) → **Phone Numbers → Buy a number** with **Voice** (e.g. a Canadian or US number, about $1–2/month). On the Console home page, copy the **Account SID** and **Auth Token**.
    If you will call other countries: Twilio → Voice → Settings → **Geo permissions** → tick those countries.
-3. **Vercel → Settings → Environment Variables** (Production and Preview):
-
-   | Key | Value |
-   |---|---|
-   | `VAPI_API_KEY` | the Vapi private key |
-   | `VAPI_WEBHOOK_SECRET` | any long random text (40+ letters and numbers). Vapi sends it with every request so your site knows it's really Vapi |
-   | `TWILIO_ACCOUNT_SID` | from Twilio |
-   | `TWILIO_AUTH_TOKEN` | from Twilio |
-   | `TWILIO_PHONE_NUMBER` | the number you bought, e.g. `+14165550199` |
-   | `SITE_URL` | **required for calls:** your exact live address, e.g. `https://www.elevnsi.com` (with `www` if your site redirects to it). Vapi sends call events here, and they fail if this address redirects |
-   | `DEFAULT_COUNTRY_CODE` | optional: country code for numbers typed without one (default `1` for Canada/US) |
-   | `VAPI_MODEL` | optional: the AI model (default `claude-haiku-5-5`, fast and cheap; `claude-sonnet-5` is smarter but slower) |
-   | `VAPI_PHONE_NUMBER_ID` | optional: only if you already added the number inside Vapi yourself |
-4. **Redeploy** (Deployments → latest → ⋯ → Redeploy).
-5. Open `yoursite/#admin` → **AI Calls** → **Connect phone number**. This adds your Twilio number to Vapi and points it at your site.
-6. Call your number from your mobile. The AI answers. Or type your own number in **Call someone now** and press **Test call to my phone**.
-7. Adjust **Agent settings** (name, voice, greetings, business information, qualifying questions, transfer number, calling hours), then **Save**. The next call uses them.
+3. Open `yoursite/#admin` → **Integrations** and paste:
+   - **Vapi:** the private API key (optionally pick the AI model: Haiku 5.5 is fastest and cheapest, Sonnet is smarter but slower).
+   - **Twilio:** Account SID, Auth Token and the phone number you bought (e.g. `+14165550199`).
+   - **Website:** your exact live address, e.g. `https://www.elevnsi.com` (with `www` if your site redirects to it). **Required for calls:** Vapi sends call events here, and they fail if this address redirects.
+   - Press **Save** and **Test connection** on each card. No redeploy needed. The webhook secret is created automatically.
+4. Go to **AI Calls** → **Connect phone number**. This adds your Twilio number to Vapi and points it at your site.
+5. Call your number from your mobile. The AI answers. Or type your own number in **Call someone now** and press **Test call to my phone**.
+6. Adjust **Agent settings** (name, voice, greetings, business information, qualifying questions, transfer number, calling hours), then **Save**. The next call uses them.
 
 ### Calling website leads back automatically
 Turn on **Call new website leads back** in Agent settings. When someone sends the contact form with a phone number and ticks **"Call me back now"**, the AI calls them within seconds, but only inside your calling hours and days (in the time zone set in `lib/config.mjs`). Outside those hours, the lead is saved as usual and your team calls back.
@@ -125,9 +116,15 @@ Turn on **Call new website leads back** in Agent settings. When someone sends th
 - Keep calling hours reasonable for the person's time zone.
 
 ### If something doesn't work
-- **Connect fails:** check the Vapi key and Twilio values in Vercel, redeploy, try again. The error message from Vapi is shown under the button.
-- **The number rings but the AI doesn't answer / calls don't appear in the log:** check `SITE_URL` is your exact live address (open `SITE_URL/api/voice/webhook` in a browser: it should say "Method Not Allowed" or show an error in JSON, not a 404 or redirect), then press **Reconnect number**.
+- **Connect fails:** in **Integrations**, press **Test connection** on the Vapi and Twilio cards and fix what they report. The error from Vapi is also shown under the Connect button.
+- **The number rings but the AI doesn't answer / calls don't appear in the log:** check **Integrations → Website** is your exact live address (open that address + `/api/voice/webhook` in a browser: it should say "Method Not Allowed" or show an error in JSON, not a 404 or redirect), then press **Reconnect number**.
 - **Outgoing calls fail to other countries:** enable that country in Twilio's Geo permissions.
+
+## API keys in the admin panel (Integrations)
+`yoursite/#admin` → **Integrations** holds the keys for Vapi, Twilio, Resend (email), the email sender/notification address, and your live website address.
+- Values are **encrypted** (AES-256) in your Upstash database and never shown again in full: you'll see `••••last4`.
+- They work within seconds, no redeploy. A value saved here **overrides** the same variable in Vercel; **Remove saved value** goes back to the Vercel one.
+- These stay in Vercel because the panel needs them to start: `ADMIN_PASSWORD`, `SESSION_SECRET`, and the database (`KV_REST_API_URL`/`KV_REST_API_TOKEN`). Saved keys are encrypted with `SESSION_SECRET` (or `ADMIN_PASSWORD` if not set), so **set `SESSION_SECRET` once** and you can change the admin password freely; otherwise changing the password means re-entering the keys.
 
 ## Everyday use
 - **Admin panel:** `https://yoursite/#admin` (not linked publicly). Sign-in lasts 12 hours.

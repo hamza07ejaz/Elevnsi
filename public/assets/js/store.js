@@ -229,8 +229,15 @@ window.ElevStore = (() => {
     remove: (id) => api('/admin/calls?id=' + encodeURIComponent(id), { method: 'DELETE', auth: true })
   };
 
+  /* ---------- API keys saved in the admin panel (site backend only) ---------- */
+  const integrations = {
+    get: () => api('/admin/integrations', { auth: true }),
+    save: (values, clear = []) => api('/admin/integrations', { method: 'PUT', body: { values, clear }, auth: true }),
+    test: (service) => api('/admin/integrations', { method: 'POST', body: { action: 'test', service }, auth: true })
+  };
+
   return {
     access, login, logout, addLead, watchLeads, refreshLeads, updateLead, deleteLead,
-    getSlots, watchContact, saveContact, saveFile, invites, calls, mode: () => ctx().then((c) => c.mode)
+    getSlots, watchContact, saveContact, saveFile, invites, calls, integrations, mode: () => ctx().then((c) => c.mode)
   };
 })();
