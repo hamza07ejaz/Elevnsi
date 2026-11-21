@@ -20,6 +20,8 @@ api/                   ← backend routes (Vercel Functions)
   admin/login.js       POST /api/admin/login
   admin/leads.js       GET/PATCH/DELETE /api/admin/leads
   admin/demo.js        GET/POST/PATCH/DELETE /api/admin/demo (demo invite links)
+  admin/calls.js       AI phone agent: settings, call log, connect number, call now
+  voice/webhook.js     POST /api/voice/webhook (Vapi calls this during every phone call)
   demo.js              serves /demo/ to people with a valid invite
 private/demo/          ← the console demo (not public; served only through api/demo.js)
 lib/
@@ -81,6 +83,51 @@ Vercel → **Deployments** → latest → **⋯ → Redeploy** (or run `npx verc
 
 ### Custom domain
 Vercel → your project → **Settings → Domains** → add `elevnsi.com` and follow the DNS steps. Then set `SITE_URL` and update the domain in `public/sitemap.xml`, `public/robots.txt` and the `<head>` of `public/index.html`.
+
+## AI phone agent (Vapi + Twilio)
+
+Your AI answers your business number 24/7 and can call people back. On a call it can answer questions from your business information, ask your qualifying questions, check free times and book the consultation (same calendar and emails as the website), transfer to your phone, and hang up politely. After each call, the admin panel has the recording, transcript, summary, outcome and cost, and you get a summary email. Callers who qualify appear in **Leads** as "AI call", and bookings as "Booked by AI call".
+
+### Setup (about 20 minutes)
+1. **Vapi account:** sign up at https://vapi.ai → Dashboard → **API Keys** → copy the **Private** key.
+2. **Twilio account and number:** sign up at https://www.twilio.com → **upgrade** the account (trial accounts can only call your own verified numbers and play a trial message) → **Phone Numbers → Buy a number** with **Voice** (e.g. a Canadian or US number, about $1–2/month). On the Console home page, copy the **Account SID** and **Auth Token**.
+   If you will call other countries: Twilio → Voice → Settings → **Geo permissions** → tick those countries.
+3. **Vercel → Settings → Environment Variables** (Production and Preview):
+
+   | Key | Value |
+   |---|---|
+   | `VAPI_API_KEY` | the Vapi private key |
+   | `VAPI_WEBHOOK_SECRET` | any long random text (40+ letters and numbers). Vapi sends it with every request so your site knows it's really Vapi |
+   | `TWILIO_ACCOUNT_SID` | from Twilio |
+   | `TWILIO_AUTH_TOKEN` | from Twilio |
+   | `TWILIO_PHONE_NUMBER` | the number you bought, e.g. `+14165550199` |
+   | `SITE_URL` | **required for calls:** your exact live address, e.g. `https://www.elevnsi.com` (with `www` if your site redirects to it). Vapi sends call events here, and they fail if this address redirects |
+   | `DEFAULT_COUNTRY_CODE` | optional: country code for numbers typed without one (default `1` for Canada/US) |
+   | `VAPI_MODEL` | optional: the AI model (default `claude-haiku-5-5`, fast and cheap; `claude-sonnet-5` is smarter but slower) |
+   | `VAPI_PHONE_NUMBER_ID` | optional: only if you already added the number inside Vapi yourself |
+4. **Redeploy** (Deployments → latest → ⋯ → Redeploy).
+5. Open `yoursite/#admin` → **AI Calls** → **Connect phone number**. This adds your Twilio number to Vapi and points it at your site.
+6. Call your number from your mobile. The AI answers. Or type your own number in **Call someone now** and press **Test call to my phone**.
+7. Adjust **Agent settings** (name, voice, greetings, business information, qualifying questions, transfer number, calling hours), then **Save**. The next call uses them.
+
+### Calling website leads back automatically
+Turn on **Call new website leads back** in Agent settings. When someone sends the contact form with a phone number and ticks **"Call me back now"**, the AI calls them within seconds, but only inside your calling hours and days (in the time zone set in `lib/config.mjs`). Outside those hours, the lead is saved as usual and your team calls back.
+
+### Costs (estimates)
+- Vapi: roughly $0.10–0.15 per minute all-in (speech recognition, AI model, voice, platform). See vapi.ai/pricing.
+- Twilio: number about $1–2/month plus about $0.01–0.02 per minute in Canada/US.
+- Each call's cost shows in the call log when Vapi reports it.
+
+### Rules for AI calling (please read)
+- **Outgoing AI calls need the person's prior consent.** In the US, AI voices count as "artificial voice" under the TCPA, and Canada's CRTC rules are similar. The website only calls people who tick the consent box, and **Call someone now** asks you to confirm consent each time. Don't call purchased lists.
+- **Recording:** the default greetings say "this call may be recorded". Keep that line if recording is on.
+- Respect do-not-call requests: the AI notes them in the call summary. Remove those people from any lists.
+- Keep calling hours reasonable for the person's time zone.
+
+### If something doesn't work
+- **Connect fails:** check the Vapi key and Twilio values in Vercel, redeploy, try again. The error message from Vapi is shown under the button.
+- **The number rings but the AI doesn't answer / calls don't appear in the log:** check `SITE_URL` is your exact live address (open `SITE_URL/api/voice/webhook` in a browser: it should say "Method Not Allowed" or show an error in JSON, not a 404 or redirect), then press **Reconnect number**.
+- **Outgoing calls fail to other countries:** enable that country in Twilio's Geo permissions.
 
 ## Everyday use
 - **Admin panel:** `https://yoursite/#admin` (not linked publicly). Sign-in lasts 12 hours.

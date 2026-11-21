@@ -247,14 +247,22 @@
     if (!validate(contactForm)) return;
     const btn = $('button[type="submit"]', contactForm);
     const data = Object.fromEntries(new FormData(contactForm));
+    if (data.call_consent && !String(data.phone || '').trim()) {
+      showError(contactForm, 'Add your phone number so our AI assistant can call you back, or untick “Call me back now”.');
+      $('#cf-phone', contactForm)?.focus();
+      return;
+    }
     data._subject = `New website inquiry: ${data.full_name} (${data.business_name})`;
     setBusy(btn, true, 'Sending…');
     try {
       const r = await send(data);
       track('generate_lead', { form: 'contact', service: data.service });
-      $('#contact-success-text').textContent = r.customerEmailed
-        ? `We've emailed a copy to ${data.email}. Our team will get back to you within one business day.`
-        : 'Our team will get back to you within one business day.';
+      const emailed = r.customerEmailed ? `We've emailed a copy to ${data.email}. ` : '';
+      $('#contact-success-text').textContent = r.callback === 'calling'
+        ? `${emailed}Our AI assistant is calling you now on ${data.phone}. Please keep your phone nearby.`
+        : r.callback === 'outside-hours'
+          ? `${emailed}It's outside our calling hours right now, so our team will call you back during business hours.`
+          : `${emailed}Our team will get back to you within one business day.`;
       contactForm.hidden = true;
       const ok = $('.form-success', contactForm.parentElement);
       ok.hidden = false; ok.focus();

@@ -5,7 +5,7 @@
   const root = document.getElementById('admin-root');
   if (!S || !root) return;
 
-  const TABS = ['leads', 'settings', 'demo'];
+  const TABS = ['leads', 'calls', 'settings', 'demo'];
   const STATUSES = [['new', 'New'], ['contacted', 'Contacted'], ['qualified', 'Qualified'], ['won', 'Won'], ['lost', 'Lost']];
   const FIELDS = [
     { card: 'Messaging', icon: 'i-whatsapp', items: [
@@ -35,6 +35,7 @@
   let access = null, built = false, leads = [], loaded = false, loadTimer = null;
   let unsubLeads = null, unsubContact = null, contactDirty = false;
   const ui = { tab: 'leads', q: '', status: 'all', source: 'all', open: null, confirm: null };
+  const cl = { data: null, error: '', open: null, confirm: null, filter: 'all', timer: null, settingsDirty: false };
 
   /* ---------- Routing ---------- */
   async function route() {
@@ -54,6 +55,7 @@
   route();
 
   function stop() {
+    clearInterval(cl.timer);
     unsubLeads?.(); unsubLeads = null;
     unsubContact?.(); unsubContact = null;
     clearTimeout(loadTimer);
@@ -152,6 +154,7 @@
           </span>
           <div class="admin-tabs" role="tablist" aria-label="Admin sections">
             <button type="button" role="tab" id="tab-leads" aria-controls="panel-leads" aria-selected="true">${icon('i-users')}Leads <span class="count" id="lead-count">0</span></button>
+            <button type="button" role="tab" id="tab-calls" aria-controls="panel-calls" aria-selected="false">${icon('i-phone')}AI Calls</button>
             <button type="button" role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false">${icon('i-gear')}Contact details</button>
             <button type="button" role="tab" id="tab-demo" aria-controls="panel-demo" aria-selected="false">${icon('i-shield')}Demo access</button>
           </div>
@@ -175,12 +178,109 @@
             <label><span class="visually-hidden">Filter by status</span>
               <select class="input" id="lead-status"><option value="all">All statuses</option>${STATUSES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label>
             <label><span class="visually-hidden">Filter by source</span>
-              <select class="input" id="lead-source"><option value="all">All sources</option><option value="contact">Contact form</option><option value="booking">Consultation booking</option></select></label>
+              <select class="input" id="lead-source"><option value="all">All sources</option><option value="contact">Contact form</option><option value="booking">Consultation booking</option><option value="call">AI phone call</option></select></label>
             ${access.mode === 'api' ? `<button type="button" class="btn btn-outline btn-sm" id="lead-refresh">${icon('i-refresh')}Refresh</button>` : ''}
             <button type="button" class="btn btn-dark btn-sm" id="lead-export">${icon('i-download')}Export CSV</button>
           </div>
           <div class="leads-table" id="lead-table" aria-live="polite"></div>
           <p class="save-state" id="export-state" role="status"></p>
+        </section>
+
+        <section id="panel-calls" role="tabpanel" aria-labelledby="tab-calls" hidden>
+          <h1 class="admin-h">AI Calls</h1>
+          <p class="admin-sub">Your AI phone agent answers calls 24/7, books consultations, qualifies leads and can call people back. Every call is saved here with its recording, transcript and summary.</p>
+          ${access.mode === 'api' ? `
+          <div id="calls-setup"></div>
+          <div class="stats" id="calls-stats"></div>
+          <div class="calls-layout">
+            <div>
+              <div class="toolbar">
+                <label><span class="visually-hidden">Filter calls</span>
+                  <select class="input" id="calls-filter">
+                    <option value="all">All calls</option><option value="inbound">Incoming</option><option value="outbound">Outgoing</option>
+                    <option value="booked">Booked</option><option value="transferred">Transferred</option><option value="missed">No answer / voicemail</option>
+                  </select></label>
+                <button type="button" class="btn btn-outline btn-sm" id="calls-refresh">${icon('i-refresh')}Refresh</button>
+                <span class="save-state" id="calls-state" role="status"></span>
+              </div>
+              <div class="leads-table" id="calls-table" aria-live="polite"></div>
+            </div>
+            <form class="settings-card" id="call-now" novalidate>
+              <h3>${icon('i-phone')}Call someone now</h3>
+              <p class="hint">The AI calls this number straight away and talks to them as your assistant.</p>
+              <div class="field">
+                <label for="cn-name">Name</label>
+                <input class="input" id="cn-name" maxlength="120" placeholder="e.g. Ali Khan" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="cn-number">Phone number <span class="req" aria-hidden="true">*</span></label>
+                <input class="input" id="cn-number" type="tel" required placeholder="+1 416 555 0100" autocomplete="off" data-error="cn-number-err">
+                <p class="error-msg" id="cn-number-err">${icon('i-alert')}Enter the number with its country code.</p>
+              </div>
+              <div class="field">
+                <label for="cn-reason">Reason for the call</label>
+                <input class="input" id="cn-reason" maxlength="200" placeholder="e.g. your inquiry about AI appointment booking">
+                <span class="hint">The AI says this in its greeting.</span>
+              </div>
+              <label class="consent-check"><input type="checkbox" id="cn-consent"><span>This person agreed to receive a call from our AI assistant.</span></label>
+              <div class="call-now-actions">
+                <button type="submit" class="btn btn-primary">${icon('i-phone')}Call now</button>
+                <button type="button" class="btn btn-outline btn-sm" id="cn-test">Test call to my phone</button>
+              </div>
+              <p class="save-state" id="cn-state" role="status"></p>
+            </form>
+          </div>
+
+          <form id="agent-settings" novalidate>
+            <h2 class="admin-h2">Agent settings</h2>
+            <div class="settings-grid">
+              <fieldset class="settings-card" style="border:1px solid var(--line);margin:0">
+                <h3>${icon('i-headset')}Voice &amp; greeting</h3>
+                <div class="two-col">
+                  <div class="field"><label for="ag-agentName">Agent name</label><input class="input" id="ag-agentName" maxlength="40"></div>
+                  <div class="field"><label for="ag-voiceId">Voice</label><select class="input" id="ag-voiceId"></select></div>
+                </div>
+                <div class="field"><label for="ag-greeting">Greeting for incoming calls</label><textarea class="input" id="ag-greeting" rows="3" maxlength="400"></textarea></div>
+                <div class="field"><label for="ag-outboundGreeting">Greeting for outgoing calls</label>
+                  <span class="hint" id="ag-og-hint">Use {{agent}} for the agent name, {{name}} for their first name and {{reason}} for the reason.</span>
+                  <textarea class="input" id="ag-outboundGreeting" rows="3" maxlength="400" aria-describedby="ag-og-hint"></textarea></div>
+              </fieldset>
+              <fieldset class="settings-card" style="border:1px solid var(--line);margin:0">
+                <h3>${icon('i-layers')}What the AI knows</h3>
+                <div class="field"><label for="ag-knowledge">Business information</label>
+                  <span class="hint" id="ag-kn-hint">Services, hours, policies, common questions. The AI only answers from this.</span>
+                  <textarea class="input" id="ag-knowledge" rows="9" maxlength="8000" aria-describedby="ag-kn-hint"></textarea></div>
+                <div class="field"><label for="ag-questions">Qualifying questions</label>
+                  <span class="hint" id="ag-q-hint">One per line. The AI asks them naturally, one at a time.</span>
+                  <textarea class="input" id="ag-questions" rows="4" maxlength="1500" aria-describedby="ag-q-hint"></textarea></div>
+              </fieldset>
+              <fieldset class="settings-card" style="border:1px solid var(--line);margin:0">
+                <h3>${icon('i-clock')}Calls &amp; transfers</h3>
+                <div class="field"><label for="ag-transferNumber">Transfer calls to</label>
+                  <span class="hint" id="ag-tr-hint">Your phone, with country code. Leave empty to take a message instead.</span>
+                  <input class="input" id="ag-transferNumber" type="tel" placeholder="+1 416 555 0100" aria-describedby="ag-tr-hint"></div>
+                <div class="two-col">
+                  <div class="field"><label for="ag-callStart">Outgoing calls from</label><input class="input" id="ag-callStart" type="time"></div>
+                  <div class="field"><label for="ag-callEnd">until</label><input class="input" id="ag-callEnd" type="time"></div>
+                </div>
+                <fieldset class="days" style="border:0;padding:0;margin:0"><legend class="hint">Outgoing call days (your business time zone)</legend>
+                  ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => `<label><input type="checkbox" name="callDays" value="${i}">${d}</label>`).join('')}
+                </fieldset>
+                <div class="field"><label for="ag-maxMinutes">Longest call (minutes)</label><input class="input" id="ag-maxMinutes" type="number" min="2" max="30"></div>
+              </fieldset>
+              <fieldset class="settings-card" style="border:1px solid var(--line);margin:0">
+                <h3>${icon('i-gear')}Automation</h3>
+                <label class="toggle-row"><input type="checkbox" id="ag-autoCallLeads"><span><strong>Call new website leads back</strong>The AI calls people who tick “Call me back now” on the contact form, within calling hours.</span></label>
+                <label class="toggle-row"><input type="checkbox" id="ag-recordCalls"><span><strong>Record calls</strong>Keep the greeting's “this call may be recorded” line when this is on.</span></label>
+                <label class="toggle-row"><input type="checkbox" id="ag-emailSummaries"><span><strong>Email me a summary after each call</strong>Sent to your admin email.</span></label>
+              </fieldset>
+            </div>
+            <div class="settings-foot">
+              <span class="save-state" id="agent-state" role="status"></span>
+              <button type="submit" class="btn btn-primary">Save agent settings</button>
+            </div>
+          </form>` : `
+          <p class="admin-mode-note">${icon('i-alert')}<span>AI calling works on your live website (Vercel). Open the admin panel there to set it up.</span></p>`}
         </section>
 
         <section id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
@@ -257,7 +357,7 @@
       root.querySelector(`#tab-${ui.tab}`).focus();
     });
     setTab(ui.tab);
-    if (access.mode === 'api') bindInvites();
+    if (access.mode === 'api') { bindInvites(); bindCalls(); }
 
     // Filters
     root.querySelector('#lead-search').addEventListener('input', (e) => { ui.q = e.target.value.trim().toLowerCase(); renderLeads(); });
@@ -285,6 +385,233 @@
       root.querySelector(`#panel-${t}`).hidden = t !== name;
     });
     if (name === 'demo' && access.mode === 'api' && !inv.loaded) loadInvites();
+    clearInterval(cl.timer);
+    if (name === 'calls' && access.mode === 'api') {
+      loadCalls();
+      cl.timer = setInterval(() => { if (!document.hidden) loadCalls(true); }, 15000);
+    }
+  }
+
+  /* ---------- AI calls ---------- */
+  const OUTCOME = {
+    booked: ['Booked', 'ok'], transferred: ['Transferred', 'info'], completed: ['Completed', ''], voicemail: ['Voicemail', 'muted'],
+    'no-answer': ['No answer', 'muted'], failed: ['Failed', 'bad']
+  };
+  const LIVE = { queued: 'Starting…', ringing: 'Ringing…', 'in-progress': 'On the call now', forwarding: 'Transferring…' };
+  const dur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '–');
+  const callAuthErr = (err) => { if (err && err.code === 'unauthorized') { built = false; renderLogin('Your session ended. Please sign in again.'); return true; } return false; };
+
+  function bindCalls() {
+    root.querySelector('#calls-refresh').addEventListener('click', () => loadCalls());
+    root.querySelector('#calls-filter').addEventListener('change', (e) => { cl.filter = e.target.value; renderCalls(); });
+    root.querySelector('#calls-table').addEventListener('click', onCallClick);
+    root.querySelector('#calls-setup').addEventListener('click', onSetupClick);
+    const form = root.querySelector('#call-now');
+    form.addEventListener('submit', (e) => { e.preventDefault(); placeCall(false); });
+    root.querySelector('#cn-test').addEventListener('click', () => placeCall(true));
+    const agent = root.querySelector('#agent-settings');
+    agent.addEventListener('input', () => { cl.settingsDirty = true; });
+    agent.addEventListener('submit', saveAgent);
+  }
+
+  async function loadCalls(quiet = false) {
+    const state = root.querySelector('#calls-state');
+    if (!quiet && state) { state.textContent = 'Loading…'; state.className = 'save-state'; }
+    try { cl.data = await S.calls.overview(); cl.error = ''; }
+    catch (err) { if (callAuthErr(err)) return; cl.error = err.message || 'Calls could not be loaded.'; }
+    if (state && !quiet) state.textContent = '';
+    renderCalls();
+    if (cl.data && !cl.settingsDirty) fillAgent(cl.data.settings, cl.data.voices);
+  }
+
+  function renderSetup() {
+    const box = root.querySelector('#calls-setup');
+    const d = cl.data;
+    if (!d) { box.innerHTML = ''; return; }
+    const s = d.setup;
+    const ready = s.vapiKey && s.webhookSecret && s.connected && s.siteUrl;
+    const item = (ok, label, help) => `<li class="${ok ? 'done' : ''}">${icon(ok ? 'i-check' : 'i-alert')}<span><strong>${label}</strong>${ok ? '' : `<small>${help}</small>`}</span></li>`;
+    box.innerHTML = `
+      <div class="calls-setup ${ready ? 'ready' : ''}">
+        <div class="cs-head">
+          <div><strong>${ready ? `Your AI phone line is live${d.connection.number ? `: ${esc(d.connection.number)}` : ''}` : 'Finish setting up your AI phone line'}</strong>
+          <small>${ready ? 'Incoming calls to this number are answered by the AI. See the setup guide in the README to change anything.' : 'Follow the steps in the setup guide (README), then press Connect.'}</small></div>
+          ${s.vapiKey && s.webhookSecret ? `<button type="button" class="btn ${s.connected ? 'btn-outline' : 'btn-primary'} btn-sm" data-setup="connect">${s.connected ? 'Reconnect number' : 'Connect phone number'}</button>` : ''}
+        </div>
+        ${ready ? '' : `<ul class="cs-steps">
+          ${item(s.vapiKey, 'Vapi API key added', 'Add VAPI_API_KEY in Vercel → Settings → Environment Variables, then redeploy.')}
+          ${item(s.webhookSecret, 'Webhook secret added', 'Add VAPI_WEBHOOK_SECRET (any long random text) in Vercel, then redeploy.')}
+          ${item(s.siteUrl, 'Site address set', `Add SITE_URL with your exact live address, e.g. https://www.elevnsi.com, then redeploy and press Reconnect. Calls are currently sent to ${esc(s.webhookUrl)}.`)}
+          ${item(s.twilio || s.connected, 'Twilio number added', 'Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER in Vercel, then redeploy.')}
+          ${item(s.connected, 'Phone number connected', 'Press “Connect phone number” above.')}
+        </ul>`}
+        <p class="save-state" id="setup-state" role="status"></p>
+      </div>`;
+  }
+
+  async function onSetupClick(e) {
+    const btn = e.target.closest('[data-setup="connect"]');
+    if (!btn) return;
+    const out = root.querySelector('#setup-state');
+    btn.setAttribute('aria-busy', 'true'); btn.textContent = 'Connecting…';
+    try {
+      await S.calls.connect();
+      await loadCalls(true);
+      const o = root.querySelector('#setup-state'); if (o) { o.textContent = 'Connected. Call your number to talk to your AI.'; o.className = 'save-state ok'; }
+    } catch (err) {
+      if (callAuthErr(err)) return;
+      btn.removeAttribute('aria-busy'); btn.textContent = 'Try again';
+      out.textContent = err.message || 'Couldn’t connect. Please try again.'; out.className = 'save-state err';
+    }
+  }
+
+  function filteredCalls() {
+    const f = cl.filter;
+    return (cl.data?.calls || []).filter((c) => f === 'all' || (f === 'inbound' || f === 'outbound' ? c.direction === f
+      : f === 'missed' ? ['no-answer', 'voicemail'].includes(c.outcome) : c.outcome === f));
+  }
+
+  function renderCalls() {
+    if (!built || access.mode !== 'api') return;
+    renderSetup();
+    const calls = cl.data?.calls || [];
+    const month = Date.now() - 30 * 864e5;
+    const recent = calls.filter((c) => Date.parse(c.createdAt) >= month);
+    const mins = Math.round(recent.reduce((n, c) => n + (c.durationSeconds || 0), 0) / 60);
+    const cost = recent.reduce((n, c) => n + (typeof c.cost === 'number' ? c.cost : 0), 0);
+    const stats = [
+      ['Calls (30 days)', recent.length, true], ['Booked', recent.filter((c) => c.outcome === 'booked').length, false],
+      ['Transferred', recent.filter((c) => c.outcome === 'transferred').length, false], ['Minutes', mins, false],
+      ['Cost (USD)', '$' + cost.toFixed(2), false]
+    ];
+    root.querySelector('#calls-stats').innerHTML = stats.map(([l, n, hl]) => `<div class="stat ${hl ? 'hl' : ''}"><span>${l}</span><strong>${cl.data ? n : '–'}</strong></div>`).join('');
+
+    const table = root.querySelector('#calls-table');
+    if (!cl.data) { table.innerHTML = `<div class="empty">${cl.error ? `<strong>Calls unavailable</strong>${esc(cl.error)}` : 'Loading calls…'}</div>`; return; }
+    if (!calls.length) { table.innerHTML = `<div class="empty"><span class="icon-tile">${icon('i-phone')}</span><strong>No calls yet</strong>When someone calls your AI number, or the AI calls someone, it appears here.</div>`; return; }
+    const rows = filteredCalls();
+    if (!rows.length) { table.innerHTML = '<div class="empty"><strong>No matching calls</strong>Try another filter.</div>'; return; }
+    table.innerHTML = rows.map(callRow).join('');
+  }
+
+  function callRow(c) {
+    const open = cl.open === c.id;
+    const d = new Date(c.createdAt);
+    const fresh = Date.now() - Date.parse(c.updatedAt || c.createdAt) < 45 * 60000; // no report after 45 min → stop showing it as live
+    const live = c.status !== 'ended' && fresh && LIVE[c.status];
+    const [olabel, ocls] = live ? [LIVE[c.status], 'live'] : OUTCOME[c.outcome] || (c.status === 'ended' ? ['Completed', ''] : ['No report', 'muted']);
+    const det = c.details || {};
+    return `
+      <div class="call-row ${open ? 'open' : ''}" data-id="${esc(c.id)}">
+        <button type="button" class="call-main" data-call="toggle" aria-expanded="${open}">
+          <span class="call-dir ${c.direction}" title="${c.direction === 'outbound' ? 'Outgoing' : 'Incoming'}">${icon(c.direction === 'outbound' ? 'i-arrow' : 'i-phone')}</span>
+          <span class="call-who"><strong>${esc(c.name || det.full_name || c.number || 'Unknown caller')}</strong><small>${esc(c.number || '')}${c.origin === 'website' ? ' · website call-back' : c.origin === 'test' ? ' · test call' : ''}</small></span>
+          <span class="call-out"><span class="call-pill ${ocls}">${olabel}</span>${c.slotLabel ? `<small>${esc(c.slotLabel)}</small>` : ''}</span>
+          <span class="call-when"><strong>${isNaN(d) ? '–' : fmtDate.format(d)}</strong><small>${isNaN(d) ? '' : fmtTime.format(d)} · ${dur(c.durationSeconds)}</small></span>
+        </button>
+        ${open ? `
+          <div class="call-detail">
+            ${c.summary ? `<p class="call-summary">${esc(c.summary)}</p>` : ''}
+            ${c.recordingUrl ? `<audio controls preload="none" src="${esc(c.recordingUrl)}"></audio>` : ''}
+            <dl class="lead-detail">
+              ${[['Business', det.business_name], ['Email', det.email], ['Needs', det.needs], ['Volume', det.volume], ['Timeline', det.timeline],
+                ['Interest', det.interest && `${det.interest}${c.score !== undefined ? ` · score ${c.score}` : ''}`], ['Follow-up', det.follow_up],
+                ['Reason for call', c.reason], ['Ended because', c.endedReason], ['Cost', typeof c.cost === 'number' ? '$' + c.cost.toFixed(3) : '']]
+                .filter(([, v]) => v).map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}
+            </dl>
+            ${c.transcript ? `<details class="call-transcript"><summary>Transcript</summary><pre>${esc(c.transcript)}</pre></details>` : ''}
+            <div class="lead-actions">
+              ${c.number ? `<button type="button" class="btn btn-outline btn-sm" data-call="again">${icon('i-phone')}Call again</button>` : ''}
+              <button type="button" class="btn btn-outline btn-sm" data-call="ask-delete">${icon('i-trash')}Delete</button>
+            </div>
+            ${cl.confirm === c.id ? `<div class="confirm-del" role="alert"><span>Delete this call record and transcript? This can't be undone.</span>
+              <button type="button" class="btn btn-danger" data-call="delete">Delete</button><button type="button" class="btn btn-outline" data-call="cancel">Cancel</button></div>` : ''}
+          </div>` : ''}
+      </div>`;
+  }
+
+  async function onCallClick(e) {
+    const btn = e.target.closest('[data-call]');
+    if (!btn) return;
+    const id = btn.closest('[data-id]')?.dataset.id;
+    const c = (cl.data?.calls || []).find((x) => x.id === id);
+    if (!c) return;
+    const act = btn.dataset.call;
+    if (act === 'toggle') { cl.open = cl.open === id ? null : id; cl.confirm = null; renderCalls(); }
+    else if (act === 'ask-delete') { cl.confirm = id; renderCalls(); }
+    else if (act === 'cancel') { cl.confirm = null; renderCalls(); }
+    else if (act === 'again') {
+      root.querySelector('#cn-name').value = c.name || '';
+      root.querySelector('#cn-number').value = c.number || '';
+      root.querySelector('#cn-reason').value = c.reason || '';
+      root.querySelector('#call-now').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      root.querySelector('#cn-consent').focus();
+    } else if (act === 'delete') {
+      btn.setAttribute('aria-busy', 'true');
+      try { await S.calls.remove(id); cl.data.calls = cl.data.calls.filter((x) => x.id !== id); cl.confirm = null; cl.open = null; renderCalls(); }
+      catch (err) { if (!callAuthErr(err)) { btn.removeAttribute('aria-busy'); btn.textContent = 'Couldn’t delete. Try again'; } }
+    }
+  }
+
+  async function placeCall(test) {
+    const form = root.querySelector('#call-now');
+    const number = root.querySelector('#cn-number');
+    const consent = root.querySelector('#cn-consent');
+    const out = root.querySelector('#cn-state');
+    out.className = 'save-state err';
+    if (!number.value.trim()) {
+      form.classList.add('was-submitted'); number.setAttribute('aria-invalid', 'true');
+      out.textContent = test ? 'Enter your own phone number above, then press Test call.' : 'Enter the phone number to call.';
+      number.focus(); return;
+    }
+    if (!test && !consent.checked) { out.textContent = 'Tick the box to confirm this person agreed to be called.'; consent.focus(); return; }
+    const btn = test ? root.querySelector('#cn-test') : form.querySelector('button[type="submit"]');
+    btn.setAttribute('aria-busy', 'true');
+    out.className = 'save-state'; out.textContent = 'Starting the call…';
+    try {
+      const call = await S.calls.call({
+        number: number.value.trim(), name: test ? (root.querySelector('#cn-name').value.trim() || 'Test') : root.querySelector('#cn-name').value.trim(),
+        reason: test ? 'a quick test of your AI phone agent' : root.querySelector('#cn-reason').value.trim(), consent: true, test
+      });
+      out.className = 'save-state ok'; out.textContent = `Calling ${call.number} now. The call appears in the list below.`;
+      form.reset(); form.classList.remove('was-submitted'); number.removeAttribute('aria-invalid');
+      loadCalls(true);
+    } catch (err) {
+      if (callAuthErr(err)) return;
+      out.className = 'save-state err'; out.textContent = err.message || 'The call couldn’t be started. Please try again.';
+    } finally { btn.removeAttribute('aria-busy'); }
+  }
+
+  const AGENT_FIELDS = ['agentName', 'voiceId', 'greeting', 'outboundGreeting', 'knowledge', 'questions', 'transferNumber', 'callStart', 'callEnd', 'maxMinutes'];
+  const AGENT_TOGGLES = ['autoCallLeads', 'recordCalls', 'emailSummaries'];
+  function fillAgent(s, voices) {
+    const sel = root.querySelector('#ag-voiceId');
+    if (sel && !sel.options.length) sel.innerHTML = (voices || []).map((v) => `<option>${esc(v)}</option>`).join('');
+    AGENT_FIELDS.forEach((k) => { const el = root.querySelector('#ag-' + k); if (el) el.value = s[k] ?? ''; });
+    AGENT_TOGGLES.forEach((k) => { const el = root.querySelector('#ag-' + k); if (el) el.checked = !!s[k]; });
+    root.querySelectorAll('#agent-settings input[name="callDays"]').forEach((el) => { el.checked = (s.callDays || []).includes(Number(el.value)); });
+  }
+  async function saveAgent(e) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const out = root.querySelector('#agent-state');
+    const settings = {};
+    AGENT_FIELDS.forEach((k) => { settings[k] = root.querySelector('#ag-' + k).value.trim(); });
+    AGENT_TOGGLES.forEach((k) => { settings[k] = root.querySelector('#ag-' + k).checked; });
+    settings.maxMinutes = Number(settings.maxMinutes);
+    settings.callDays = [...form.querySelectorAll('input[name="callDays"]:checked')].map((el) => Number(el.value));
+    const btn = form.querySelector('button[type="submit"]');
+    btn.setAttribute('aria-busy', 'true'); out.className = 'save-state'; out.textContent = 'Saving…';
+    try {
+      const saved = await S.calls.saveSettings(settings);
+      cl.settingsDirty = false;
+      if (cl.data) cl.data.settings = saved;
+      fillAgent(saved);
+      out.className = 'save-state ok'; out.textContent = 'Saved. The next call uses these settings.';
+    } catch (err) {
+      if (callAuthErr(err)) return;
+      out.className = 'save-state err'; out.textContent = err.message || 'Couldn’t save. Please try again.';
+    } finally { btn.removeAttribute('aria-busy'); }
   }
 
   /* ---------- Demo invites ---------- */
@@ -518,7 +845,7 @@
         </button>
         <div class="c-contact"><strong>${esc(l.email || '—')}</strong><small>${esc(l.phone || 'No phone')}</small></div>
         <div class="c-service"><small>${esc(l.service || '—')}</small>
-          <span class="src ${l.source === 'booking' ? 'booking' : ''}">${icon(l.source === 'booking' ? 'i-calendar' : 'i-mail')}${l.source === 'booking' ? 'Booking' : 'Contact form'}</span></div>
+          <span class="src ${l.source === 'booking' ? 'booking' : ''}">${icon(l.source === 'booking' ? 'i-calendar' : l.source === 'call' ? 'i-phone' : 'i-mail')}${l.source === 'booking' ? (l.channel === 'phone' ? 'Booked by AI call' : 'Booking') : l.source === 'call' ? 'AI call' : 'Contact form'}</span></div>
         <div class="c-date"><strong>${isNaN(d) ? '—' : fmtDate.format(d)}</strong><small>${isNaN(d) ? '' : fmtTime.format(d)}</small></div>
         <label class="c-status"><span class="visually-hidden">Status for ${esc(l.full_name)}</span>
           <select class="input status-select" data-act="status" data-focus="s-${esc(key)}" data-status="${st}">

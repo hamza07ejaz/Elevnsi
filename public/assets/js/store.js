@@ -220,8 +220,17 @@ window.ElevStore = (() => {
     remove: (code) => api('/admin/demo?code=' + encodeURIComponent(code), { method: 'DELETE', auth: true })
   };
 
+  /* ---------- AI phone agent (site backend only) ---------- */
+  const calls = {
+    overview: () => api('/admin/calls', { auth: true }),
+    saveSettings: (settings) => api('/admin/calls', { method: 'PUT', body: { settings }, auth: true }).then((d) => d.settings),
+    connect: () => api('/admin/calls', { method: 'POST', body: { action: 'connect' }, auth: true }).then((d) => d.connection),
+    call: (data) => api('/admin/calls', { method: 'POST', body: { action: 'call', ...data }, auth: true }).then((d) => d.call),
+    remove: (id) => api('/admin/calls?id=' + encodeURIComponent(id), { method: 'DELETE', auth: true })
+  };
+
   return {
     access, login, logout, addLead, watchLeads, refreshLeads, updateLead, deleteLead,
-    getSlots, watchContact, saveContact, saveFile, invites, mode: () => ctx().then((c) => c.mode)
+    getSlots, watchContact, saveContact, saveFile, invites, calls, mode: () => ctx().then((c) => c.mode)
   };
 })();

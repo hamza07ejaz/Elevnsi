@@ -5,6 +5,7 @@ import {
 } from '../lib/core.mjs';
 import { BOOKING } from '../lib/config.mjs';
 import { sendMail, customerEmail, adminEmail, bookingIcs } from '../lib/mail.mjs';
+import { voiceConfigured, getVoiceSettings, withinCallingHours, startOutboundCall } from '../lib/voice.mjs';
 
 export const POST = route(async (req) => {
   const body = await readJson(req);
@@ -67,5 +68,22 @@ export const POST = route(async (req) => {
   results.forEach((r) => r.status === 'rejected' && console.error('[lead] email failed', r.reason));
   const customerEmailed = results[0].status === 'fulfilled' && results[0].value === true;
 
-  return json({ ok: true, id: lead.id, slotLabel: lead.slotLabel, timeZoneLabel: BOOKING.timeZoneLabel, customerEmailed });
+  // AI call-back: only if they ticked the consent box, auto-calling is on, and it's within calling hours
+  let callback = 'off';
+  if (source === 'contact' && (body.call_consent === 'yes' || body.call_consent === true) && lead.phone && voiceConfigured()) {
+    try {
+      const settings = await getVoiceSettings();
+      if (!settings.autoCallLeads) callback = 'disabled';
+      else if (!withinCallingHours(settings)) callback = 'outside-hours';
+      else {
+        await startOutboundCall({ req, number: lead.phone, name: lead.full_name, reason: `your inquiry about ${lead.service || 'AI automation'} on our website`, leadId: lead.id, origin: 'website' });
+        callback = 'calling';
+      }
+    } catch (err) { console.error('[lead] AI call-back failed', err); callback = 'failed'; }
+    lead.callConsent = true;
+    lead.callback = callback;
+    await leadsStore().setJSON(`lead/${lead.id}`, lead).catch(() => {});
+  }
+
+  return json({ ok: true, id: lead.id, slotLabel: lead.slotLabel, timeZoneLabel: BOOKING.timeZoneLabel, customerEmailed, callback });
 });
