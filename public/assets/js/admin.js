@@ -647,7 +647,8 @@
         ${open ? `
           <div class="call-detail">
             ${c.summary ? `<p class="call-summary">${esc(c.summary)}</p>` : ''}
-            ${c.recordingUrl ? `<audio controls preload="none" src="${esc(c.recordingUrl)}"></audio>` : ''}
+            ${c.audio ? `<div class="call-audio"><audio controls preload="none" src="${esc(c.audio)}"></audio>
+              <a class="btn btn-outline btn-sm" href="${esc(c.audio)}" target="_blank" rel="noopener">${icon('i-arrow')}Open recording</a></div>` : ''}
             <dl class="lead-detail">
               ${[['Business', det.business_name], ['Email', det.email], ['Needs', det.needs], ['Volume', det.volume], ['Timeline', det.timeline],
                 ['Interest', det.interest && `${det.interest}${c.score !== undefined ? ` · score ${c.score}` : ''}`], ['Follow-up', det.follow_up],

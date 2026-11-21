@@ -7,7 +7,7 @@
 import { json, fail, readJson, route, isAdmin, env, siteUrl, siteStore, callsStore } from '../../lib/core.mjs';
 import {
   VOICES, getVoiceSettings, cleanVoiceSettings, voiceConfigured, getConnection, vapi, webhookServer,
-  startOutboundCall, toE164, withinCallingHours
+  startOutboundCall, toE164, withinCallingHours, recordingLink
 } from '../../lib/voice.mjs';
 
 const guard = (fn) => route(async (req) => {
@@ -37,7 +37,12 @@ export const GET = guard(async (req) => {
       webhookUrl: `${siteUrl(req)}/api/voice/webhook`,
       withinHours: withinCallingHours(settings)
     },
-    calls: calls.slice(0, 300)
+    // Private Vapi recordings play through a short-lived signed link (see api/voice/recording.js)
+    calls: calls.slice(0, 300).map((c) => ({
+      ...c,
+      recordingUrl: undefined,
+      audio: c.status === 'ended' && (c.recordingUrl || c.hasRecording) && c.id ? recordingLink(c.id) : ''
+    }))
   });
 });
 

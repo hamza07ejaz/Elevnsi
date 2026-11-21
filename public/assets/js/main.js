@@ -349,6 +349,23 @@
   const fromIso = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
   const to12 = (t) => { const [h, m] = t.split(':').map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`; };
   const times = () => (server ? server.times : bk.times);
+  // Visitor's own clock for a business-time slot, e.g. "9:00 PM your time" (empty when they share the business time zone)
+  const myZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const zoneOffset = (at, tz) => {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(at).map((x) => [x.type, x.value]));
+    return (Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute) - Math.floor(at.getTime() / 60000) * 60000) / 60000;
+  };
+  const tzAbbr = () => { const m = /\(([^)]+)\)/.exec(server?.timeZoneLabel || ''); return m ? ' ' + m[1] : ''; };
+  function yourTime(date, t) {
+    if (!server?.timeZone || server.timeZone === myZone) return '';
+    try {
+      const wall = Date.parse(`${date}T${t}:00Z`);
+      const at = new Date(wall - zoneOffset(new Date(wall - zoneOffset(new Date(wall), server.timeZone) * 60000), server.timeZone) * 60000);
+      if (zoneOffset(at, server.timeZone) === zoneOffset(at, myZone)) return '';
+      const sameDay = at.toLocaleDateString('en-CA') === date;
+      return at.toLocaleString(undefined, sameDay ? { hour: 'numeric', minute: '2-digit' } : { weekday: 'short', hour: 'numeric', minute: '2-digit' }) + ' your time';
+    } catch { return ''; }
+  }
   const isTaken = (date, t, i) => (server ? server.taken.has(`${date}T${t}`) : (parseInt(date.slice(-2), 10) + i) % 5 === 0);
 
   async function loadSlots() {
@@ -404,14 +421,15 @@
       else if (isTaken(state.date, t, i)) { b.disabled = true; b.setAttribute('aria-label', `${to12(t)}, already booked`); }
       timeGrid.append(b);
     });
-    const tzText = server ? `Times shown in ${server.timeZoneLabel}.` : `Times shown in your time zone (${Intl.DateTimeFormat().resolvedOptions().timeZone}).`;
+    const hint = server && state.date ? yourTime(state.date, times()[0]) : '';
+    const tzText = server ? `Times shown in ${server.timeZoneLabel}.${hint ? ` ${to12(times()[0])}${tzAbbr()} is ${hint}.` : ''}` : `Times shown in your time zone (${myZone}).`;
     $('#picker-tz').textContent = state.date ? tzText : 'Pick a date to see available times.';
   }
   function updateSummary() {
     const dBtn = state.date && $(`[data-date="${state.date}"]`, dateStrip);
     const mins = server?.durationMinutes || 30;
     summary.textContent = state.date && state.time && dBtn
-      ? `${dBtn.dataset.label} at ${to12(state.time)} · ${mins}-minute video call`
+      ? `${dBtn.dataset.label} at ${to12(state.time)}${tzAbbr()}${yourTime(state.date, state.time) ? ` (${yourTime(state.date, state.time)})` : ''} · ${mins}-minute video call`
       : state.date ? 'Now choose a time.' : 'Select a date and time to continue.';
     $('#bk-date').value = state.date || '';
     $('#bk-time').value = state.time || '';

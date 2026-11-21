@@ -1002,7 +1002,8 @@ fieldset.settings-card { min-width: 0; }
 .call-when { text-align: right; }
 .call-detail { padding: 4px 18px 18px 68px; display: grid; gap: 14px; }
 .call-summary { font-size: 15px; line-height: 1.55; background: #f8f8f6; border-radius: 12px; padding: 12px 14px; }
-.call-detail audio { width: 100%; max-width: 480px; }
+.call-audio { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.call-detail audio { width: 100%; max-width: 480px; flex: 1 1 260px; }
 .call-transcript summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .call-transcript pre { white-space: pre-wrap; font: 14px/1.6 inherit; font-family: inherit; background: #f8f8f6; border-radius: 12px; padding: 12px 14px; margin-top: 8px; max-height: 420px; overflow: auto; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

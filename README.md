@@ -22,6 +22,7 @@ api/                   ← backend routes (Vercel Functions)
   admin/demo.js        GET/POST/PATCH/DELETE /api/admin/demo (demo invite links)
   admin/calls.js       AI phone agent: settings, call log, connect number, call now
   voice/webhook.js     POST /api/voice/webhook (Vapi calls this during every phone call)
+  voice/recording.js   GET  /api/voice/recording (plays private call recordings in the admin panel)
   demo.js              serves /demo/ to people with a valid invite
 private/demo/          ← the console demo (not public; served only through api/demo.js)
 lib/
@@ -128,7 +129,9 @@ Turn on **Call new website leads back** in Agent settings. When someone sends th
 
 ## Everyday use
 - **Admin panel:** `https://yoursite/#admin` (not linked publicly). Sign-in lasts 12 hours.
-- **Booking hours / time zone / meeting length:** `lib/config.mjs`, then deploy again.
+- **Booking hours / time zone / meeting length:** `lib/config.mjs`, then deploy again. Bookings use **US Eastern Time** (`America/New_York`, daylight saving handled automatically). Visitors in other countries also see the time in their own zone on the booking form and in their confirmation email.
+- **Email icon:** emails show the ELEVNSI icon (`public/assets/img/elevnsi-icon-192.png`), loaded from your live `SITE_URL`. The round picture next to the sender name in Gmail/Outlook is set by the mail provider, not the email: if you send with Gmail, set the Google account's profile photo; if you send with Resend from your domain, create a free Gravatar (gravatar.com) for the sender address and upload `public/assets/img/elevnsi-icon-512.png`.
+- **Call recordings:** Vapi keeps recordings private, so the admin panel plays them through `/api/voice/recording` with a signed link that lasts 6 hours (reload the panel after that). Your Vapi key never reaches the browser.
 - **Email wording:** `lib/mail.mjs`.
 - **Change the admin password:** update `ADMIN_PASSWORD` in Vercel and redeploy.
 - Deleting a booking in the admin panel frees that time slot again.

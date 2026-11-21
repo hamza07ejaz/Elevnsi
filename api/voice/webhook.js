@@ -96,7 +96,8 @@ export const POST = route(async (req) => {
         direction: existing.direction || (call.type === 'outboundPhoneCall' ? 'outbound' : 'inbound'),
         number: existing.number || callerNumberOf(call),
         transcript: String(artifact.transcript || msg.transcript || '').slice(0, 60000),
-        recordingUrl: findUrl(artifact.recording) || artifact.recordingUrl || msg.recordingUrl || '',
+        recordingUrl: findUrl(artifact.recording) || artifact.recordingUrl || artifact.stereoRecordingUrl || msg.recordingUrl || '',
+        hasRecording: !!(artifact.recording || artifact.recordingUrl || artifact.stereoRecordingUrl || msg.recordingUrl || existing.hasRecording),
         summary: existing.summary || analysis.summary || '',
         cost: typeof msg.cost === 'number' ? msg.cost : (typeof call.cost === 'number' ? call.cost : existing.cost ?? null)
       });

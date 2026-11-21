@@ -12,6 +12,7 @@ export const GET = route(async () => {
     times: BOOKING.times,
     taken,
     durationMinutes: BOOKING.durationMinutes,
+    timeZone: BOOKING.timeZone,
     timeZoneLabel: BOOKING.timeZoneLabel,
     format: BOOKING.format
   });
