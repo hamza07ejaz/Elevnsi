@@ -98,7 +98,16 @@ Your AI answers your business number 24/7 and can call people back. On a call it
    - **Twilio:** Account SID, Auth Token and the phone number you bought (e.g. `+14165550199`).
    - **Website:** your exact live address, e.g. `https://www.elevnsi.com` (with `www` if your site redirects to it). **Required for calls:** Vapi sends call events here, and they fail if this address redirects.
    - Press **Save** and **Test connection** on each card. No redeploy needed. The webhook secret is created automatically.
-4. Go to **AI Calls** → **Connect phone number**. This adds your Twilio number to Vapi and points it at your site.
+4. Go to **AI Calls** → **Connect phone number**. This adds your phone number to Vapi and points it at your site.
+
+### Using Vonage instead of Twilio
+1. Sign up at https://www.vonage.com/communications-apis/ → add credit → **Numbers → Buy numbers** with **Voice**.
+2. Copy the **API key** and **API secret** from the top of the Vonage dashboard.
+3. Admin → **Integrations** → **Vonage** card: paste the API key, API secret and your Vonage number → **Save** → **Test connection** (it checks the keys, your balance and that the number is in your account with Voice).
+4. **Phone line** card: choose **Vonage** → **Save**. ("Automatic" uses Twilio if Twilio keys are filled in, otherwise Vonage.)
+5. **AI Calls** → **Connect phone number** (or **Reconnect number**). This saves your Vonage key in Vapi and adds the number. You can switch back to Twilio the same way at any time.
+- If Connect says Vapi couldn't save the Vonage key: in the Vapi dashboard, **Phone Numbers → Import → Vonage**, then paste that number's ID in **Integrations → Vapi → Vapi phone number ID** and press **Connect** again.
+- Incoming calls work with Vonage. Vapi's docs only list Twilio, Telnyx and DIDWW for outgoing calls, so test **Test call to my phone** before relying on AI call-backs with Vonage.
 5. Call your number from your mobile. The AI answers. Or type your own number in **Call someone now** and press **Test call to my phone**.
 6. Adjust **Agent settings** (name, voice, greetings, business information, qualifying questions, transfer number, calling hours), then **Save**. The next call uses them.
 

@@ -1,7 +1,7 @@
 // /api/admin/integrations (admin only): API keys saved in the admin panel instead of Vercel
 //   GET                                   which keys are set, where from, masked previews (secrets never leave the server)
 //   PUT  {values: {KEY: 'new value'}, clear: ['KEY']}   save new values / remove admin values (falls back to Vercel)
-//   POST {action: 'test', service: 'vapi' | 'twilio' | 'resend'}   check the saved keys work
+//   POST {action: 'test', service: 'vapi' | 'twilio' | 'vonage' | 'resend'}   check the saved keys work
 import crypto from 'node:crypto';
 import {
   json, fail, readJson, route, isAdmin, env, isEmail, INTEGRATION_KEYS, settingSource, adminValues,
@@ -10,7 +10,7 @@ import {
 import { toE164, vapi } from '../../lib/voice.mjs';
 
 const MODELS = ['claude-haiku-5-5', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'];
-const SECRET = ['VAPI_API_KEY', 'VAPI_WEBHOOK_SECRET', 'TWILIO_AUTH_TOKEN', 'RESEND_API_KEY'];
+const SECRET = ['VAPI_API_KEY', 'VAPI_WEBHOOK_SECRET', 'TWILIO_AUTH_TOKEN', 'VONAGE_API_SECRET', 'RESEND_API_KEY'];
 
 const guard = (fn) => route(async (req) => (isAdmin(req) ? fn(req) : fail(401, 'unauthorized', 'Please sign in again.')));
 const mask = (key, v) => (!v ? '' : SECRET.includes(key) ? `••••${v.slice(-4)}` : v);
@@ -24,8 +24,12 @@ function status(req) {
 function check(key, raw) {
   const v = String(raw ?? '').trim();
   const bad = (m) => { throw Object.assign(new Error(m), { code: 'invalid' }); };
-  if (/\s/.test(v) && !['MAIL_FROM', 'TWILIO_PHONE_NUMBER'].includes(key)) bad(`${key} can't contain spaces. Check you copied only the key.`);
+  if (/\s/.test(v) && !['MAIL_FROM', 'TWILIO_PHONE_NUMBER', 'VONAGE_PHONE_NUMBER'].includes(key)) bad(`${key} can't contain spaces. Check you copied only the key.`);
   switch (key) {
+    case 'PHONE_PROVIDER': return ['twilio', 'vonage'].includes(v) ? v : bad('Choose Twilio or Vonage.');
+    case 'VONAGE_PHONE_NUMBER': return toE164(v) || bad('Vonage number must include the country code, e.g. +14165550199.');
+    case 'VONAGE_API_KEY': return /^[a-z0-9]{6,32}$/i.test(v) ? v : bad('Vonage API key is the short code (letters and numbers) at the top of the Vonage dashboard.');
+    case 'VONAGE_API_SECRET': return v.length >= 6 && v.length <= 128 ? v : bad('Vonage API secret looks too short.');
     case 'SITE_URL':
       if (!/^https:\/\/[a-z0-9.-]+\.[a-z]{2,}$/i.test(v.replace(/\/$/, ''))) bad('Website address must look like https://www.elevnsi.com (no path).');
       return v.replace(/\/$/, '');
@@ -86,7 +90,37 @@ export const POST = guard(async (req) => {
       if (!res.ok) return done(false, `Twilio replied with error ${res.status}.`);
       const acct = await res.json().catch(() => ({}));
       const trial = acct.type === 'Trial';
-      return done(true, `Twilio works: ${acct.friendly_name || 'account found'}${trial ? '. It is a trial account: upgrade it so the AI can call any number without the trial message.' : '.'}`);
+      // Is the phone number really in this Twilio account? ("Number Not Found on Twilio" otherwise)
+      const num = toE164(env('TWILIO_PHONE_NUMBER'));
+      let numberNote = ' Add your Twilio phone number too.';
+      if (num) {
+        const nr = await fetch(`${base}/2010-04-01/Accounts/${encodeURIComponent(sid)}/IncomingPhoneNumbers.json?PhoneNumber=${encodeURIComponent(num)}`, { headers: { Authorization: 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64') } });
+        const list = nr.ok ? (await nr.json().catch(() => ({}))).incoming_phone_numbers || [] : null;
+        if (list && !list.length) return done(false, `Twilio keys work, but ${num} is not a number in this Twilio account. Check Phone Numbers → Active numbers and copy that number exactly.`);
+        numberNote = list ? ` ${num} found in your account.` : '';
+      }
+      return done(true, `Twilio works: ${acct.friendly_name || 'account found'}.${numberNote}${trial ? ' It is a trial account: upgrade it so the AI can call any number without the trial message.' : ''}`);
+    }
+    if (body.service === 'vonage') {
+      const key = env('VONAGE_API_KEY'), secret = env('VONAGE_API_SECRET');
+      if (!key || !secret) return done(false, 'Add your Vonage API key and API secret first.');
+      const base = env('VONAGE_API_BASE', 'https://rest.nexmo.com').replace(/\/$/, '');
+      const auth = `api_key=${encodeURIComponent(key)}&api_secret=${encodeURIComponent(secret)}`;
+      const res = await fetch(`${base}/account/get-balance?${auth}`);
+      if (res.status === 401 || res.status === 403) return done(false, 'Vonage rejected the API key or secret. Copy them again from the top of the Vonage dashboard (API Settings).');
+      if (!res.ok) return done(false, `Vonage replied with error ${res.status}.`);
+      const bal = await res.json().catch(() => ({}));
+      const balance = typeof bal.value === 'number' ? ` Balance: ${bal.value.toFixed(2)}.` : '';
+      const low = typeof bal.value === 'number' && bal.value < 1 ? ' Your balance is low: add credit so calls can connect.' : '';
+      const num = toE164(env('VONAGE_PHONE_NUMBER'));
+      if (!num) return done(true, `Vonage keys work.${balance} Now add your Vonage phone number.${low}`);
+      const nr = await fetch(`${base}/account/numbers?${auth}&pattern=${num.slice(1)}&search_pattern=0`);
+      const data = nr.ok ? await nr.json().catch(() => ({})) : null;
+      const found = data && (data.numbers || []).find((x) => String(x.msisdn) === num.slice(1));
+      if (data && !found) return done(false, `Vonage keys work, but ${num} is not a number in this Vonage account. Check Numbers → Your numbers and copy it exactly.`);
+      const voice = !found || !Array.isArray(found.features) || found.features.includes('VOICE');
+      if (!voice) return done(false, `${num} is in your Vonage account but can't take voice calls. Buy a number with Voice.`);
+      return done(true, `Vonage works.${balance} ${num} found in your account.${low}`);
     }
     if (body.service === 'resend') {
       if (!env('RESEND_API_KEY')) return done(false, 'Add your Resend API key first.');

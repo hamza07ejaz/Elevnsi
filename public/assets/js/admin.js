@@ -14,6 +14,11 @@
         { k: 'VAPI_MODEL', label: 'AI model', select: true, hint: 'Haiku 5.5 is fastest and cheapest. Sonnet is smarter but replies a little slower.' },
         { k: 'VAPI_PHONE_NUMBER_ID', label: 'Vapi phone number ID', hint: 'Optional. Only if you added the number inside Vapi yourself; otherwise leave empty.' }
       ] },
+    { id: 'line', title: 'Phone line', icon: 'i-phone',
+      help: 'Which company provides your AI’s phone number. After changing it, go to AI Calls and press <strong>Reconnect number</strong>.',
+      fields: [
+        { k: 'PHONE_PROVIDER', label: 'Phone line provider', select: true, defaultLabel: 'Automatic (whichever has keys, Twilio first)', options: [['twilio', 'Twilio'], ['vonage', 'Vonage']] }
+      ] },
     { id: 'twilio', title: 'Twilio (phone number)', icon: 'i-phone', test: true,
       help: 'Twilio Console home page: Account SID and Auth Token. Phone Numbers → Active numbers for your number.',
       fields: [
@@ -21,6 +26,14 @@
         { k: 'TWILIO_AUTH_TOKEN', label: 'Auth Token', secret: true },
         { k: 'TWILIO_PHONE_NUMBER', label: 'Phone number', ph: '+14165550199' },
         { k: 'DEFAULT_COUNTRY_CODE', label: 'Default country code', ph: '1', hint: 'Used when a number is typed without its country code (1 = Canada/US).' }
+      ] },
+    { id: 'vonage', title: 'Vonage (phone number)', icon: 'i-phone', test: true,
+      help: 'dashboard.nexmo.com: API key and API secret are at the top of the dashboard. Numbers → Your numbers for your number (it must have Voice).',
+      fields: [
+        { k: 'VONAGE_API_KEY', label: 'API key', ph: 'e.g. a1b2c3d4' },
+        { k: 'VONAGE_API_SECRET', label: 'API secret', secret: true },
+        { k: 'VONAGE_PHONE_NUMBER', label: 'Phone number', ph: '+14165550199' },
+        { k: 'VONAGE_CREDENTIAL_ID', label: 'Vapi credential ID', hint: 'Optional. Only if you already added your Vonage key in the Vapi dashboard; otherwise leave empty and Connect does it for you.' }
       ] },
     { id: 'resend', title: 'Email (Resend)', icon: 'i-mail', test: true,
       help: 'resend.com → API Keys → Create. Verify your domain in Resend so customer emails are delivered.',
@@ -112,7 +125,6 @@
             <p class="error-msg" id="admin-password-err">${icon('i-alert')}<span id="admin-password-err-text">Please enter your admin password.</span></p>
           </div>
           <button type="submit" class="btn btn-primary btn-block">Sign in</button>
-          <p class="login-hint">Forgot the password? Change <code>ADMIN_PASSWORD</code> in Vercel → your project → Settings → Environment Variables, then redeploy.</p>
           <a class="link-arrow" href="#top">Back to website</a>
         </form>
       </div>`;
@@ -491,8 +503,9 @@
       src.className = 'int-src is-' + (st.source || 'none');
       const input = root.querySelector('#int-' + f.k);
       if (f.select) {
-        input.innerHTML = `<option value="">${st.source === 'vercel' ? `From Vercel (${esc(st.preview)})` : 'Default (claude-haiku-5-5)'}</option>` +
-          d.models.map((m) => `<option value="${esc(m)}" ${st.source === 'admin' && st.preview === m ? 'selected' : ''}>${esc(m)}</option>`).join('');
+        const opts = f.options || d.models.map((m) => [m, m]);
+        input.innerHTML = `<option value="">${st.source === 'vercel' ? `From Vercel (${esc(st.preview)})` : esc(f.defaultLabel || 'Default (claude-haiku-5-5)')}</option>` +
+          opts.map(([v, label]) => `<option value="${esc(v)}" ${st.source === 'admin' && st.preview === v ? 'selected' : ''}>${esc(label)}</option>`).join('');
       } else {
         input.value = '';
         input.placeholder = st.preview ? `${st.preview}  (type to replace)` : (f.k === 'SITE_URL' && d.suggestedSiteUrl.startsWith('https') ? d.suggestedSiteUrl : f.ph || '');
@@ -518,7 +531,8 @@
     try {
       renderIntegrations(await S.integrations.save(values, clear));
       cl.data = null; // AI Calls tab re-reads its setup status
-      cardState(id, id === 'vapi' || id === 'twilio' ? 'Saved. Press Test connection, then AI Calls → Connect phone number.' : 'Saved. Active within a few seconds.', 'ok');
+      cardState(id, ['vapi', 'twilio', 'vonage'].includes(id) ? 'Saved. Press Test connection, then AI Calls → Connect phone number.'
+        : id === 'line' ? 'Saved. Now go to AI Calls and press Reconnect number.' : 'Saved. Active within a few seconds.', 'ok');
     } catch (err) { if (!callAuthErr(err)) cardState(id, err.message || 'Couldn’t save. Please try again.', 'err'); }
     finally { btn.removeAttribute('aria-busy'); }
   }
@@ -576,8 +590,11 @@
           ${item(s.vapiKey, 'Vapi API key added', 'Paste your Vapi private key in Integrations → Vapi.')}
           ${item(s.webhookSecret, 'Webhook secret ready', 'Created automatically when you save your Vapi key in Integrations.')}
           ${item(s.siteUrl, 'Website address set', `Enter your live address in Integrations → Website (e.g. https://www.elevnsi.com), then press Reconnect. Calls are currently sent to ${esc(s.webhookUrl)}.`)}
-          ${item(s.twilio || s.connected, 'Twilio number added', 'Enter your Twilio Account SID, Auth Token and phone number in Integrations → Twilio.')}
-          ${item(s.connected, 'Phone number connected', 'Press “Connect phone number” above.')}
+          ${item(s.lineReady || s.connected, s.providerName ? `${s.providerName} number added` : 'Phone line added',
+            s.provider === 'vonage' ? 'Enter your Vonage API key, API secret and phone number in Integrations → Vonage.'
+            : s.provider === 'twilio' ? 'Enter your Twilio Account SID, Auth Token and phone number in Integrations → Twilio.'
+            : 'Enter your Twilio or Vonage keys and phone number in Integrations.')}
+          ${item(s.connected, 'Phone number connected', s.needsReconnect ? `You changed the phone line or number. Press “Reconnect number” above to switch to ${esc(s.providerName || 'it')}.` : 'Press “Connect phone number” above.')}
         </ul>`}
         <p class="save-state" id="setup-state" role="status"></p>
       </div>`;
